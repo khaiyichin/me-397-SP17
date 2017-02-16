@@ -10,7 +10,8 @@ read_coords = opened_file.read()
 read_coords = re.split('\n|,',read_coords)
 
 # Convert coordinate strings to integers
-int_coords = [[int(read_coords[i]),int(read_coords[i+1])] for i in range(len(read_coords)/2)]
+int_coords = [[int(read_coords[i]),int(read_coords[i+1])] for i in
+range(len(read_coords)//2)]
 
 # Initialize dictionary with coordinates
 pos = dict(zip(range(1,len(int_coords)+1),int_coords))
@@ -18,7 +19,7 @@ pos = dict(zip(range(1,len(int_coords)+1),int_coords))
 oliver30 = nx.Graph()
 oliver30.add_nodes_from(pos.keys())
 
-for n,p in pos.iteritems():
+for n,p in pos.items():
     oliver30.node[n]['pos'] = p
 
 # Create plot with gridlines
