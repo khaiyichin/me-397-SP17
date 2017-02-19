@@ -41,21 +41,33 @@ TO-DOs:
     - coords from 'A study of permutation crossover operators on the tsp' by
     Oliver, Smith, Holland 1987.
 2. run program(?) -tentative-
-3. create ants as objects
+3. create ants as objects --- partially done; might needa add more methods/attr
 '''
 
 import networkx as nx
 from matplotlib import pyplot as plt
-import numpy
+import numpy as np
 import sys
 import re
 
-class ant(object):
+class Ant(object):
     def __init__(self):
         self.memory = []
 
     def visit(self,town):
         self.memory.append(town)
+
+    # have to properly destruct ant
+    # either __del__ or __exit__
+
+class routing_table(object):
+    def __init__(self,cities,trail,coords):
+        self.cities = cities
+
+class Point(object):
+    def __init__(self,x,y):
+        self.x = x
+        self.y = y
 
 def construct_graph(file):
     # Read coordinates
@@ -65,7 +77,7 @@ def construct_graph(file):
     opened_file.close()
 
     # Convert coordinate strings to integers
-    int_coords = [[int(read_coords[i]),int(read_coords[i+1])] for i in
+    int_coords = [[int(read_coords[2*i]),int(read_coords[2*i+1])] for i in
     range(len(read_coords)//2)]
 
     # Initialize dictionary with coordinates
@@ -80,33 +92,70 @@ def construct_graph(file):
     # Create plot with gridlines
     fig = plt.figure()
     axes = fig.gca()
-    axes.set_xticks(numpy.arange(0,101,2))
-    axes.set_yticks(numpy.arange(0,101,2))
+    axes.set_xticks(np.arange(0,101,2))
+    axes.set_yticks(np.arange(0,101,2))
 
     # Draw network on figure
     nx.draw_networkx(graph,pos,node_size=175,font_size=9,node_color='w')
     plt.grid('on')
-    plt.show()
+    # plt.show()
 
-def ACO_meta-heuristic():
-    while (termination_criterion_not_satisfied):
+    return int_coords
 
-def compute_transition_probabilities(A,M,constraints):
-    # if M contains the town already ==> 0
-    return probability
+# def trail_intensity(alpha):
+#
+# def visibility(beta):
+#
+# def ACO_meta-heuristic():
+#     while (termination_criterion_not_satisfied):
+#
+# def compute_transition_probabilities(A,M,constraints):
+#     # if M contains the town already ==> 0
+#     rand = random.random()
+#
+#     options = [i for i in A.cities if i not in M] # eliminating towns that have been visited
+#     sum([j for j in options]) # sum of all trail and visibility in local node
+#     probabilities = {}
+#     return probability
+#
+# def read_local_ant-routing_table():
+#     # look at options to move to
+#     return A # list of all options (next immediate node)
+#
+#
+# def update_ant_memory():
+#
+#     return M
+#
+# def apply_ant_decision_policy(probability_dict,constraints):
+#
+#
+# def ants_generation_and_activity():
+#
+#
+# def new_active_ant():
+#     cities_list = []
 
-def update_ant_memory():
-    return M
-
-def apply_ant_decision_policy(probability_dict,constraints):
-
-def ants_generation_and_activity():
-
-def new_active_ant():
-    cities_list = []
+def distance(point1,point2):
+    x1 = point1.x
+    x2 = point2.x
+    y1 = point1.y
+    y2 = point2.y
 
 def main():
-    construct_graph("oliver30Coords.txt")
+    coords = construct_graph("oliver30Coords.txt")
+
+    # Create point objects (nodes) with coordinates and compile into a vector
+    points = [Point(coords[i][0],coords[i][1]) for i in range(len(coords))]
+
+    #
+    # # Create matrix of distances
+    # numpy.ones(len())
+    # location_matrix = np.matrix([i for i in points])
+    # distance_matrix = numpy.square(location_matrix)
+    #
+    # # Create map (ant routing table)
+    # map = routing_table(coords)
 
 if __name__ == '__main__' :
     main()
