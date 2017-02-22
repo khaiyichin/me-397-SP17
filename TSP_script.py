@@ -40,8 +40,12 @@ TO-DOs:
 1. develop oliver30 graph
     - coords from 'A study of permutation crossover operators on the tsp' by
     Oliver, Smith, Holland 1987.
-2. run program(?) -tentative-
-3. create ants as objects --- partially done; might needa add more methods/attr
+2. create ants as objects --- partially done; might needa add more methods/attr
+3. establish distance and trail matrices for routing table -- done
+4. complete local routing table (focus on one ant)
+5. compute probabilities using memory from local routing table
+6. generate update procedure; the trail_mat (and other update activities) will be called in here
+7. create high level loop that has cycle_num as argument (termination)
 '''
 
 import networkx as nx
@@ -102,10 +106,6 @@ def construct_graph(file):
 
     return int_coords
 
-# def trail_intensity(alpha):
-#
-# def visibility(beta):
-#
 # def ACO_meta-heuristic():
 #     while (termination_criterion_not_satisfied):
 #
@@ -118,11 +118,64 @@ def construct_graph(file):
 #     probabilities = {}
 #     return probability
 #
-# def read_local_ant-routing_table():
+# def read_local_ant_routing_table(ant,routing_table): ### DUPLICATE - FOCUS ON ONE ANT INSTEAD (as compared to ant_routing_table())
 #     # look at options to move to
+#     current_state = ant.memory[-1] # Current ant position
+#     avail_options = [i for i in range(routing_table.shape) if i not in ant.memory] # Remaining cities
+#
+#     for i in avail_options:
+#         tra =  trail_matrix[current_state,i] # should be upper triangular
+#         vis = distance_matrix[current_state,i] # should be upper triangular
+#
+#         trail_intensity[current_state,i] = tra
+#         visibility[current_state,i] = vis
+#
+#         denom += (tra**alpha)*(vis**beta)
+#     A = ((trail_intensity**alpha)*(visibility**beta)) / denom
 #     return A # list of all options (next immediate node)
-#
-#
+
+def ant_routing_table(trail_matrix,distance_matrix):
+    alpha = 1
+    beta = 5
+
+    visibility_matrix = np.zeros(distance_matrix.shape)
+    for i in range(len(distance_matrix)):
+        for j in range(i+1,len(distance_matrix)):
+            visibility_matrix[i,j] = np.reciprocal(distance_matrix[i,j])
+            visibility_matrix[j,i] = visibility_matrix[i,j]
+
+    numer = np.multiply(trail_matrix**alpha,visibility_matrix**beta) # in matrix form
+    denom = np.sum(numer,axis=1) # in array form
+    general_routing_table = numer/denom # in matrix form
+    return general_routing_table
+
+def trail_mat(past_trail_mat,update_mat):
+    # Create trail_intensity matrix that will be continuously updated
+    rho = 0.99
+    return rho*past_trail_mat + update_mat
+
+def distance_mat(all_points):
+    # Create matrix of distances
+    distance_matrix = np.zeros((len(all_points),len(all_points)))
+
+    for i in range(0,len(all_points)-1):
+        for j in range(i+1,len(all_points)):
+            distance_matrix[i,j] = distance(all_points[i],all_points[j])
+            distance_matrix[j,i] = distance_matrix[i,j]
+
+    np.set_printoptions(precision=5)
+    np.savetxt('distance_matrix.txt',distance_matrix,fmt="%-5.1f")
+
+    return distance_matrix
+
+def distance(point1,point2):
+    x1 = point1.x
+    x2 = point2.x
+    y1 = point1.y
+    y2 = point2.y
+
+    return np.sqrt((x1-x2)**2 + (y1-y2)**2)
+
 # def update_ant_memory():
 #
 #     return M
@@ -136,23 +189,19 @@ def construct_graph(file):
 # def new_active_ant():
 #     cities_list = []
 
-def distance(point1,point2):
-    x1 = point1.x
-    x2 = point2.x
-    y1 = point1.y
-    y2 = point2.y
-
 def main():
+    # Define a list of coordinates
     coords = construct_graph("oliver30Coords.txt")
 
     # Create point objects (nodes) with coordinates and compile into a vector
     points = [Point(coords[i][0],coords[i][1]) for i in range(len(coords))]
 
-    #
-    # # Create matrix of distances
-    # numpy.ones(len())
-    # location_matrix = np.matrix([i for i in points])
-    # distance_matrix = numpy.square(location_matrix)
+    # Create a matrix of distances
+    distances = distance_mat(points)
+
+    # Read general routing table
+    ant_routing_table(np.ones(distances.shape)/10,distances) #### FOR TESTING PURPOSE -- ERASE ASAP
+
     #
     # # Create map (ant routing table)
     # map = routing_table(coords)
