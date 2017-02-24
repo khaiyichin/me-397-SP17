@@ -26,10 +26,10 @@ procedure new_active_ant(): {ant lifecycle}
         P = compute_transition_probabilities(A,M,omega);
         next_state = apply_ant_decision_policy(P,omega);
         move_to_next_state(next_state);
-        if (online_step-by-step_pheromone_update):
+        if (online_step-by-step_pheromone_update): !!! delay pheromone until all ants finishes their cycle
             foreach visited_arc in psi_solution:
                 deposit_pheromone_on_the_visited_arc();
-                update_ant-routing_table();
+                update_ant-routing_table(); the network object is the routing table with phero and dist
             end foreach
         end if
         die();
@@ -41,13 +41,14 @@ TO-DOs:
     - coords from 'A study of permutation crossover operators on the tsp' by
     Oliver, Smith, Holland 1987.
 2. create ants as objects --- partially done; might needa add more methods/attr
-3. created graph as object by initializing routing table -- done ** need to redo (think about objects)
+3. created graph as object by initializing -- done
 4. complete local routing table (focus on one ant) -- done
-5. compute probabilities using memory from local routing table
-6. generate update procedure; the trail_mat (and other update activities) will be called in here
+5. compute probabilities using memory from local routing table -- done
+6. complete movement of ant (storing memory)
+7. update trail level (outside of individual ant loop - higher level)
 7. create high level loop that has cycle_num as argument (termination)
 '''
-
+import random
 import networkx as nx
 from matplotlib import pyplot as plt
 import numpy as np
@@ -131,14 +132,17 @@ def initialize_graph(file):
 # def ACO_meta-heuristic():
 #     while (termination_criterion_not_satisfied):
 #
-# def compute_transition_probabilities(A,M,constraints):
-#     # if M contains the town already ==> 0
-#     rand = random.random()
-#
-#     options = [i for i in A.cities if i not in M] # eliminating towns that have been visited
-#     sum([j for j in options]) # sum of all trail and visibility in local node
-#     probabilities = {}
-#     return probability
+def compute_transition_probabilities(local_routing_table):
+    rand = random.random()
+
+    probabilities = [edges.prob for edges in local_routing_table]
+    choice = random.choices(local_routing_table,weights=probabilities)
+    choice = choice[0]  # random.choices return a list
+
+    return choice
+
+# def probability_selector():
+
 
 def read_local_ant_routing_table(ant,network):
     # look at options to move to
@@ -161,7 +165,7 @@ def read_local_ant_routing_table(ant,network):
         edges.prob = edges.prob/denom
         local_routing_table.append(edges)
 
-    return local_routing_table  # a list of all options (next immediate node)
+    return local_routing_table  # a list of objects of all options (next immediate node)
 
 # def ant_routing_table(trail_matrix,distance_matrix): ### no need for this anymore
 #     alpha = 1
@@ -200,21 +204,23 @@ def distance_calc(point1,point2):
 #
 #     while (current_state != target_state):
 #         A = read_local_routing_table(ant_object) # should be done, but clean up
-#         P = compute_transition_probabilities(A,M,omega)
+#         next_link = compute_transition_probabilities(A)
+#         move_to_next_state(ant,next_link)
 
 def main():
     # Define a list of coordinates
     graph = initialize_graph("oliver30Coords.txt")
 
     ant1 = Ant()
-    ant1.memory = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,28,27,26,25]
+    ant1.memory = [1,2,3,4,5,6,7,8,9,10,28,27,26,25,29,30,12,11,21,13,14,15,16,17,18,19,20]
 
     x = read_local_ant_routing_table(ant1,graph)
 
 
     y =[(x[i].name,x[i].prob) for i in range(len(x))]
 
-    print(y)
+    n = compute_transition_probabilities(x)
+    print(n.name)
     print(graph.edge[25][29]['dist'])
     print(graph.edge[25][30]['dist'])
     sys.exit()
