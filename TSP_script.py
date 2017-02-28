@@ -44,8 +44,8 @@ TO-DOs:
 3. created graph as object by initializing -- done
 4. complete local routing table (focus on one ant) -- done
 5. compute probabilities using memory from local routing table -- done
-6. complete movement of ant (storing memory)
-7. update trail level (outside of individual ant loop - higher level)
+6. complete movement of ant (storing memory) -- done
+7. update trail level (outside of individual ant loop - higher level) -- partially done; still need to coordinate all ants with loop of start_nodes (only done with one)
 7. create high level loop that has cycle_num as argument (termination)
 '''
 import random
@@ -55,12 +55,36 @@ import numpy as np
 import sys
 import re
 
-class Ant(object):
-    def __init__(self):
-        self.memory = []
+def new_active_ant(start_location):
+    ant = Ant(start_location['name'])
 
-    def visit(self,town):
+    for steps in range(len(network)-1):
+        list_of_options = read_local_ant_routing_table(ant) # should be done, but clean up
+        next_city = compute_transition_probabilities(list_of_options)
+        move_to_next_state(ant,next_city)
+
+    # Final step back to starting
+    # start = Routing_Table_Element(network.edge[ant.last_memory()][])
+    # move_to_next_state(ant,start_location)
+    ant.round_trip()
+    return {ant.travelled:ant.memory} # dictionary with (distance-list of towns) key-value pairs
+
+class Ant(object):
+    def __init__(self,start_location):
+        self.memory = [start_location]
+        self.first_memory = start_location
+        self.travelled = 0
+
+    def visit(self,town,dist):
         self.memory.append(town)
+        self.travelled += dist
+
+    def round_trip(self):
+        self.travelled += network.edge[self.last_memory()][self.first_memory]['dist']
+        self.memory.append(self.first_memory)
+
+    def last_memory(self):
+        return self.memory[-1]
 
     # have to properly destruct ant
     # either __del__ or __exit__
@@ -137,19 +161,16 @@ def compute_transition_probabilities(local_routing_table):
 
     probabilities = [edges.prob for edges in local_routing_table]
     choice = random.choices(local_routing_table,weights=probabilities)
-    choice = choice[0]  # random.choices return a list
+    choice = choice[0]  # random.choices return a list; we want just one element
 
     return choice
 
-# def probability_selector():
-
-
-def read_local_ant_routing_table(ant,network):
+def read_local_ant_routing_table(ant):
     # look at options to move to
     alpha = 1   # trail exponent
-    beta = 2    # visibility exponent
+    beta = 5    # visibility exponent
 
-    current_state = ant.memory[-1]  # Current ant position in integer
+    current_state = ant.last_memory()  # Current ant position in integer
     avail_options = [i for i in range(1,len(network.nodes())+1) if i not in ant.memory] # Remaining cities in integers
 
     list_of_edges = []
@@ -167,21 +188,6 @@ def read_local_ant_routing_table(ant,network):
 
     return local_routing_table  # a list of objects of all options (next immediate node)
 
-# def ant_routing_table(trail_matrix,distance_matrix): ### no need for this anymore
-#     alpha = 1
-#     beta = 5
-#
-#     visibility_matrix = np.zeros(distance_matrix.shape)
-#     for i in range(len(distance_matrix)):
-#         for j in range(i+1,len(distance_matrix)):
-#             visibility_matrix[i,j] = np.reciprocal(distance_matrix[i,j])
-#             visibility_matrix[j,i] = visibility_matrix[i,j]
-#
-#     numer = np.multiply(trail_matrix**alpha,visibility_matrix**beta) # in matrix form
-#     denom = np.sum(numer,axis=1) # in array form
-#     general_routing_table = numer/denom # in matrix form
-#     return general_routing_table
-
 def distance_calc(point1,point2):
     x1 = point1['x']
     x2 = point2['x']
@@ -189,6 +195,16 @@ def distance_calc(point1,point2):
     y2 = point2['y']
 
     return np.sqrt((x1-x2)**2 + (y1-y2)**2)
+
+def move_to_next_state(ant,next_state):
+    current_state = ant.memory[-1]
+    city1,city2 = next_state.name[0]
+    if city1 != current_state:
+        next_city = city1
+    else:
+        next_city = city2
+
+    ant.visit(next_city,next_state.dist)
 
 # def update_ant_memory():
 #
@@ -200,29 +216,15 @@ def distance_calc(point1,point2):
 # def ants_generation_and_activity():
 #
 #
-# def new_active_ant():
-#
-#     while (current_state != target_state):
-#         A = read_local_routing_table(ant_object) # should be done, but clean up
-#         next_link = compute_transition_probabilities(A)
-#         move_to_next_state(ant,next_link)
 
 def main():
     # Define a list of coordinates
-    graph = initialize_graph("oliver30Coords.txt")
-
-    ant1 = Ant()
-    ant1.memory = [1,2,3,4,5,6,7,8,9,10,28,27,26,25,29,30,12,11,21,13,14,15,16,17,18,19,20]
-
-    x = read_local_ant_routing_table(ant1,graph)
-
-
-    y =[(x[i].name,x[i].prob) for i in range(len(x))]
-
-    n = compute_transition_probabilities(x)
-    print(n.name)
-    print(graph.edge[25][29]['dist'])
-    print(graph.edge[25][30]['dist'])
+    global network
+    network = initialize_graph("oliver30Coords.txt")
+    memory = {}
+    memory.update(new_active_ant(network.node[2]))
+    memory.update(new_active_ant(network.node[9]))
+    print(memory)
     sys.exit()
 
     # Create point objects (nodes) with coordinates and compile into a vector
