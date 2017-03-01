@@ -14,7 +14,8 @@ end procedure
 procedure ants_generation_and_activity():
     while (available_resources):
         schedule_the_creation_of_a_new_ant();
-        new_active_ant();
+        for each ant/location:
+            new_active_ant();
     end while
 end procedure
 
@@ -45,8 +46,9 @@ TO-DOs:
 4. complete local routing table (focus on one ant) -- done
 5. compute probabilities using memory from local routing table -- done
 6. complete movement of ant (storing memory) -- done
-7. update trail level (outside of individual ant loop - higher level) -- partially done; still need to coordinate all ants with loop of start_nodes (only done with one)
-7. create high level loop that has cycle_num as argument (termination)
+7. update trail level (outside of individual ant loop - higher level) -- 90% done (have to properly kill ants)
+8. update trail intensity for edges that evaporates
+9. create high level loop that has cycle_num as argument (termination)
 '''
 import random
 import networkx as nx
@@ -55,25 +57,15 @@ import numpy as np
 import sys
 import re
 
-def new_active_ant(start_location):
-    ant = Ant(start_location['name'])
-
-    for steps in range(len(network)-1):
-        list_of_options = read_local_ant_routing_table(ant) # should be done, but clean up
-        next_city = compute_transition_probabilities(list_of_options)
-        move_to_next_state(ant,next_city)
-
-    # Final step back to starting
-    # start = Routing_Table_Element(network.edge[ant.last_memory()][])
-    # move_to_next_state(ant,start_location)
-    ant.round_trip()
-    return {ant.travelled:ant.memory} # dictionary with (distance-list of towns) key-value pairs
+global Q
+Q = 10 # pheromone constant
 
 class Ant(object):
-    def __init__(self,start_location):
+    def __init__(self,start_location,phero=Q):
         self.memory = [start_location]
         self.first_memory = start_location
         self.travelled = 0
+        self.phero = phero
 
     def visit(self,town,dist):
         self.memory.append(town)
@@ -85,6 +77,17 @@ class Ant(object):
 
     def last_memory(self):
         return self.memory[-1]
+
+    def lay_pheromones(self):
+        self.phero_per_unit = self.phero/self.travelled
+        backwards_mem = list(reversed(self.memory))
+
+        # Lay pheromone on the networkx graph object
+        for step in range(len(network.nodes())):
+            head_node = backwards_mem[step]
+            tail_node = backwards_mem[step+1]
+            distance = network.edge[head_node][tail_node]['dist']
+            network.edge[head_node][tail_node]['phero'] += self.phero_per_unit*distance
 
     # have to properly destruct ant
     # either __del__ or __exit__
@@ -99,12 +102,44 @@ class Routing_Table_Element(object):
 
 class Point(object):
     def __init__(self,x,y):
-        self._x = x
-        self._y = y
+        self.x = x
+        self.y = y
 
-    @property
-    def x():
-        return self._x
+# def ACO_meta-heuristic():
+#     while (termination_criterion_not_satisfied):
+
+def ants_generation_and_activity():
+    # Initialize list to store ant objects
+    travelled_ants = []
+
+    # Shoot ants through graph
+    for city_pos in range(1,len(network)+1):
+        travelled_ants.append(new_active_ant(network.node[city_pos]))
+
+    # Initialize condition for shortest length ==> a very large number
+    shortest = 10000
+
+    # Send ants to retrace their tours to lay pheromones
+    for each_ant in travelled_ants:
+        if (shortest > each_ant.travelled):
+            shortest = each_ant.travelled
+            result = shortest,each_ant.memory
+        each_ant.lay_pheromones()
+
+    return result # the shortest route for this current iteration
+
+def new_active_ant(start_location):
+    ant = Ant(start_location['name'])
+
+    for steps in range(len(network)-1):
+        list_of_options = read_local_ant_routing_table(ant) # should be done, but clean up
+        next_city = compute_transition_probabilities(list_of_options)
+        move_to_next_state(ant,next_city)
+
+    # Final step back to starting point
+    ant.round_trip()
+
+    return ant # returns ant object to be appended to list
 
 # Point = namedtuple('Point', 'x', 'y')
 # a = Point(x=1, y=3)
@@ -151,22 +186,9 @@ def initialize_graph(file):
     plt.grid('on')
     # plt.show()
 
-    return graph # return graph object (will be used to update pheromones later)
-
-# def ACO_meta-heuristic():
-#     while (termination_criterion_not_satisfied):
-#
-def compute_transition_probabilities(local_routing_table):
-    rand = random.random()
-
-    probabilities = [edges.prob for edges in local_routing_table]
-    choice = random.choices(local_routing_table,weights=probabilities)
-    choice = choice[0]  # random.choices return a list; we want just one element
-
-    return choice
+    return graph # networkx object (will be used to update pheromones later)
 
 def read_local_ant_routing_table(ant):
-    # look at options to move to
     alpha = 1   # trail exponent
     beta = 5    # visibility exponent
 
@@ -186,15 +208,16 @@ def read_local_ant_routing_table(ant):
         edges.prob = edges.prob/denom
         local_routing_table.append(edges)
 
-    return local_routing_table  # a list of objects of all options (next immediate node)
+    return local_routing_table  # list of objects of all options (next immediate node)
 
-def distance_calc(point1,point2):
-    x1 = point1['x']
-    x2 = point2['x']
-    y1 = point1['y']
-    y2 = point2['y']
+def compute_transition_probabilities(local_routing_table):
+    rand = random.random()
 
-    return np.sqrt((x1-x2)**2 + (y1-y2)**2)
+    probabilities = [edges.prob for edges in local_routing_table]
+    choice = random.choices(local_routing_table,weights=probabilities)
+    choice = choice[0]  # random.choices return a list; we want just one element
+
+    return choice
 
 def move_to_next_state(ant,next_state):
     current_state = ant.memory[-1]
@@ -206,43 +229,21 @@ def move_to_next_state(ant,next_state):
 
     ant.visit(next_city,next_state.dist)
 
-# def update_ant_memory():
-#
-#     return M
-#
-# def apply_ant_decision_policy(probability_dict,constraints):
-#
-#
-# def ants_generation_and_activity():
-#
-#
+def distance_calc(point1,point2):
+    x1 = point1['x']
+    x2 = point2['x']
+    y1 = point1['y']
+    y2 = point2['y']
+
+    return np.sqrt((x1-x2)**2 + (y1-y2)**2)
 
 def main():
-    # Define a list of coordinates
+    # Define a global networkx object 'network' of coordinates
     global network
     network = initialize_graph("oliver30Coords.txt")
-    memory = {}
-    memory.update(new_active_ant(network.node[2]))
-    memory.update(new_active_ant(network.node[9]))
-    print(memory)
+    x=ants_generation_and_activity()
+    print(x)
     sys.exit()
-
-    # Create point objects (nodes) with coordinates and compile into a vector
-    # points = [Point(coords[i][0],coords[i][1]) for i in range(len(coords))] not needed
-
-    # while (cycle != num_of_cycles or stagnate == False): # Overall loop
-    #
-    #     for (num_of_ants): # Iterating through each ant
-    #
-    #         while (current_state != target_state): # Tour of an ant loop
-
-
-
-    sys.exit()
-
-    #
-    # # Create map (ant routing table)
-    # map = routing_table(coords)
 
 if __name__ == '__main__' :
     main()
