@@ -43,11 +43,12 @@ TO-DOs:
     Oliver, Smith, Holland 1987.
 2. create ants as objects --- partially done; might needa add more methods/attr
 3. created graph as object by initializing -- done
-4. complete local routing table (focus on one ant) -- done
-5. compute probabilities using memory from local routing table -- done
-6. complete movement of ant (storing memory) -- done
-7. update trail level (outside of individual ant loop - higher level) -- 90% done (have to properly kill ants)
-8. update trail intensity for edges that evaporates
+4. create city class that instantiates object and reference to networkx object
+5. move everything below accordingly to Ant, Ant_Graph, City etc classes:
+    compute probabilities using memory from local routing table --
+    complete movement of ant (storing memory) --
+    update trail level (outside of individual ant loop - higher level) -- (have to properly kill ants)
+    update trail intensity for edges that evaporates
 9. create high level loop that has cycle_num as argument (termination)
 '''
 import random
@@ -57,13 +58,34 @@ import numpy as np
 import sys
 import re
 
-global Q
 Q = 10 # pheromone constant
+
+class City(tuple):
+    def __new__(cls,node_name,networkx_object):
+        return tuple.__new__(cls,(node_name,networkx_object)) # the static method __new__ creates and return a new instance of a class from its first argument
+
+    def neighbors(self):
+        return self[1].neighbors(self[0])
+
+    def node_name(self):
+        return self[0]
+
+# city = City('NYC', graph)
+# for road in city.neighbors():
+#     road.length
+
+class Ant_Graph(nx.Graph):
+    def __new__(cls,graph_object):
+        return nx.Graph.__new__(cls,graph_object)
+
+    def evaporate():
+        for edge in self.edges():
+            edge['phero'] *= decay_rate
 
 class Ant(object):
     def __init__(self,start_location,phero=Q):
-        self.memory = [start_location]
-        self.first_memory = start_location
+        self.memory = [start_location.node_name] # City object
+        self.first_memory = start_location.node_name
         self.travelled = 0
         self.phero = phero
 
@@ -71,7 +93,11 @@ class Ant(object):
         self.memory.append(town)
         self.travelled += dist
 
+    def choices(self,graph):
+
+
     def round_trip(self):
+        for start_location in Ant_Graph.edges(city.node_name())
         self.travelled += network.edge[self.last_memory()][self.first_memory]['dist']
         self.memory.append(self.first_memory)
 
