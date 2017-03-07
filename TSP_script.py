@@ -63,7 +63,7 @@ import re
 Q = 10 # pheromone constant
 decay_rate = 0.5 # trail evaporation
 rho = 1 - decay_rate # trail persistence
-max_cycles = 1000 # total number of cycles
+max_cycles = 200 # total number of cycles
 
 class City(tuple):
     def __new__(cls,node_name,networkx_graph):
@@ -71,15 +71,6 @@ class City(tuple):
 
     def node_name(self):
         return self[0]
-
-    def neighbors(self):
-        return self[1].neighbors(self[0])
-
-    def distance_from(self,next_city_name):
-        return self[1].edge[self[0]][next_city_name]['dist']
-
-    def pheromones_on_edge(self,next_city_name):
-        return self[1].edge[self[0]][next_city_name]['phero']
 
 class Ant_Graph(nx.Graph):
     def __new__(cls,graph_object):
@@ -143,10 +134,6 @@ class Ant(object):
             self.move_to_next_state()
 
         self.round_trip()
-        #
-        # print(self.memory)
-        # print(len(self.memory))
-        # print(self.travelled)
 
     def round_trip(self):
         self.travelled += self.map.edge[self.current_state][self.first_state]['dist']
@@ -191,7 +178,8 @@ def ACO_metaheuristic():
     optimal_route = list_of_shortest_each_cycle[ind][1]
 
     print("Shortest tour consists of these cities:",optimal_route,
-    "with a distance of",optimal_dist,".")
+    "with a distance of",optimal_dist)
+    print("Number of cycles ran =",current_cycle)
 
 def ants_generation_and_activity_cycle(networkx_graph):
     # Initialize list to store ant objects
@@ -260,47 +248,6 @@ def initialize_graph(file):
     # plt.show()
 
     return graph # networkx object (will be used to update pheromones later)
-
-# def read_local_ant_routing_table(ant):
-#     alpha = 1   # trail exponent
-#     beta = 5    # visibility exponent
-#
-#     current_state = ant.last_memory()  # Current ant position in integer
-#     avail_options = [i for i in range(1,len(network.nodes())+1) if i not in ant.memory] # Remaining cities in integers
-#
-#     list_of_edges = []
-#     denom = 0
-#     for option in avail_options:
-#         edge = Routing_Table_Element(network.edge[current_state][option])
-#         edge.prob = (edge.phero**alpha)*(edge.vis**beta)
-#         denom += (edge.phero**alpha)*(edge.vis**beta)
-#         list_of_edges.append(edge)
-#
-#     local_routing_table = []
-#     for edges in list_of_edges:
-#         edges.prob = edges.prob/denom
-#         local_routing_table.append(edges)
-#
-#     return local_routing_table  # list of objects of all options (next immediate node)
-
-# def compute_transition_probabilities(local_routing_table):
-#     rand = random.random()
-#
-#     probabilities = [edges.prob for edges in local_routing_table]
-#     choice = random.choices(local_routing_table,weights=probabilities)
-#     choice = choice[0]  # random.choices return a list; we want just one element
-#
-#     return choice
-
-# def move_to_next_state(ant,next_state):
-#     current_state = ant.memory[-1]
-#     city1,city2 = next_state.name[0]
-#     if city1 != current_state:
-#         next_city = city1
-#     else:
-#         next_city = city2
-#
-#     ant.visit(next_city,next_state.dist)
 
 def distance_calc(point1,point2):
     x1 = point1['x']
