@@ -49,8 +49,9 @@ TO-DOs:
     complete movement of ant (storing memory) -- done
     update trail level (outside of individual ant loop - higher level) -- (have to properly kill ants)
     update trail intensity for edges that evaporates
-6. create loop to iterate over all starting city objects for ants
-9. create high level loop that has cycle_num as argument (termination)
+6. create loop to iterate over all starting city objects for ants -- done
+7. create high level loop that has cycle_num as argument (termination) -- done
+8. include stagnation behavior as condition (think about what kind of stagnation)
 '''
 import random
 import networkx as nx
@@ -60,6 +61,9 @@ import sys
 import re
 
 Q = 10 # pheromone constant
+decay_rate = 0.5 # trail evaporation
+rho = 1 - decay_rate # trail persistence
+max_cycles = 1000 # total number of cycles
 
 class City(tuple):
     def __new__(cls,node_name,networkx_graph):
@@ -77,23 +81,20 @@ class City(tuple):
     def pheromones_on_edge(self,next_city_name):
         return self[1].edge[self[0]][next_city_name]['phero']
 
-# city = City('NYC', graph)
-# for road in city.neighbors():
-#     road.length
-
 class Ant_Graph(nx.Graph):
     def __new__(cls,graph_object):
-        return nx.Graph.__new__(cls,graph_object)
+        return nx.Graph.__new__(cls)
 
-    def evaporate():
-        for edge in self.edges():
-            edge['phero'] *= decay_rate
+    def evaporate(self):
+        trail_persistence_rate = rho
+        for each in self.edges_iter():
+            self.edge[each[0]][each[1]]['phero'] *= trail_persistence_rate
 
 class Ant(object):
     def __init__(self,starting_city,phero=Q):
         self.memory = [starting_city.node_name()]
         self.current_state = starting_city.node_name()
-        self.map = starting_city[1] # City() class object
+        self.map = starting_city[1] # City() class tuple, which the 2nd element is the networkx graph object
         self.first_state = starting_city.node_name()
         self.travelled = 0
         self.phero = phero
@@ -103,7 +104,7 @@ class Ant(object):
         alpha = 1
         beta = 5
 
-        travelled_cities = [i for i in self.memory]
+        travelled_cities = self.memory
         avail_options = [i for i in self.map.neighbors(self.current_state) if i not in travelled_cities]
 
         list_of_probs = []
@@ -142,83 +143,80 @@ class Ant(object):
             self.move_to_next_state()
 
         self.round_trip()
-
-        print(self.memory)
-        print(self.travelled)
+        #
+        # print(self.memory)
+        # print(len(self.memory))
+        # print(self.travelled)
 
     def round_trip(self):
         self.travelled += self.map.edge[self.current_state][self.first_state]['dist']
         self.memory.append(self.first_state)
-
-    # def last_memory(self):
-    #     return self.memory[-1]
+        # self.current_state = self.first_state
 
     def lay_pheromones(self):
         self.phero_per_unit = self.phero/self.travelled
         backwards_mem = list(reversed(self.memory))
 
         # Lay pheromone on the networkx graph object
-        for step in range(len(network.nodes())):
+        for step in range(self.map.number_of_nodes()):
             head_node = backwards_mem[step]
             tail_node = backwards_mem[step+1]
-            distance = network.edge[head_node][tail_node]['dist']
-            network.edge[head_node][tail_node]['phero'] += self.phero_per_unit*distance
+            distance = self.map.edge[head_node][tail_node]['dist']
+            self.map.edge[head_node][tail_node]['phero'] += self.phero_per_unit*distance
 
-    # have to properly destruct ant
+    # have to properly destruct ant ???
     # either __del__ or __exit__
 
-# class Routing_Table_Element(object):
-#     def __init__(self,edge):
-#         self.name   = edge['name']
-#         self.phero  = edge['phero']
-#         self.dist   = edge['dist']
-#         self.vis    = 1./self.dist
-#         self.prob   = 0
+def ACO_metaheuristic():
+    list_of_shortest_each_cycle = []
+    num_of_cycles = max_cycles
+    current_cycle = 0
 
-# class Point(object):
-#     def __init__(self,x,y):
-#         self.x = x
-#         self.y = y
+    # Initialize NetworkX Graph object
+    networkx_graph = initialize_graph("oliver30Coords.txt")
+    ant_graph_object = Ant_Graph(networkx_graph)
 
-# def ACO_meta-heuristic():
-#     while (termination_criterion_not_satisfied):
+    while (current_cycle != num_of_cycles):
+        shortest_for_now = ants_generation_and_activity_cycle(ant_graph_object)
+        list_of_shortest_each_cycle.append(shortest_for_now)
 
-# def ants_generation_and_activity():
-#     # Initialize list to store ant objects
-#     travelled_ants = []
-#
-#     # Shoot ants through graph
-#     for city_pos in range(1,len(network)+1):
-#         travelled_ants.append(new_active_ant(network.node[city_pos]))
-#
-#     # Initialize condition for shortest length ==> a very large number
-#     shortest = 10000
-#
-#     # Send ants to retrace their tours to lay pheromones
-#     for each_ant in travelled_ants:
-#         if (shortest > each_ant.travelled):
-#             shortest = each_ant.travelled
-#             result = shortest,each_ant.memory
-#         each_ant.lay_pheromones()
-#
-#     return result # the shortest route for this current iteration
+        ant_graph_object.evaporate()
+        current_cycle += 1
 
-# def new_active_ant(start_location):
-#     ant = Ant(start_location['name'])
-#
-#     for steps in range(len(network)-1):
-#         list_of_options = read_local_ant_routing_table(ant) # should be done, but clean up
-#         next_city = compute_transition_probabilities(list_of_options)
-#         move_to_next_state(ant,next_city)
-#
-#     # Final step back to starting point
-#     ant.round_trip()
-#
-#     return ant # returns ant object to be appended to list
+    dist_and_route = list(zip(*list_of_shortest_each_cycle)) # asterisk means unpacking arguments from a list
+    distances = dist_and_route[0]
 
-# Point = namedtuple('Point', 'x', 'y')
-# a = Point(x=1, y=3)
-# class Town(Point):
+    optimal_dist = min(distances)
+    ind = dist_and_route[0].index(optimal_dist)
+    optimal_route = list_of_shortest_each_cycle[ind][1]
+
+    print("Shortest tour consists of these cities:",optimal_route,
+    "with a distance of",optimal_dist,".")
+
+def ants_generation_and_activity_cycle(networkx_graph):
+    # Initialize list to store ant objects
+    travelled_ants = []
+
+    # Create starting points/cities
+    num_of_starting_nodes = networkx_graph.number_of_nodes() # in the TSP problem we use all cities as start points
+    starting_cities = [City(i,networkx_graph) for i in range(1,num_of_starting_nodes+1)]
+
+    # Shoot ants through graph
+    for city in starting_cities:
+        travelled_ants.append(Ant(city))
+        travelled_ants[-1].cycle()
+
+    # Initialize condition for shortest length ==> a very large number
+    shortest = 10000
+
+    # Send ants to retrace their tours to lay pheromones
+    for each_ant in travelled_ants:
+        if (shortest > each_ant.travelled):
+            shortest = each_ant.travelled
+            result = shortest,each_ant.memory
+        each_ant.lay_pheromones()
+
+    return result # the shortest route for this current iteration
 
 def initialize_graph(file):
     # Read coordinates
@@ -313,19 +311,7 @@ def distance_calc(point1,point2):
     return np.sqrt((x1-x2)**2 + (y1-y2)**2)
 
 def main():
-    # Define a global networkx object 'network' of coordinates
-    network = initialize_graph("oliver30Coords.txt")
-    city1 = City(1,network)
-    city2 = City(2,network)
-    city3 = City(3,network)
-    ant1 = Ant(city1)
-    ant2 = Ant(city2)
-    ant3 = Ant(city3)
-    ant1.cycle()
-    ant2.cycle()
-    ant3.cycle()
-
-    sys.exit()
+    ACO_metaheuristic()
 
 if __name__ == '__main__' :
     main()
