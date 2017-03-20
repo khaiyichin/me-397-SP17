@@ -16,26 +16,130 @@ O-O-O-O-O
 where the lines (-,|,X) are the connecting links and the circles (O) are the nodes.
 
 TO-DOs:
-1. develop 5x5 graph -- halfway; still need to add the edges properly like the graph above
-2. create ant objects
-3. create tuple class instantiates and referenc to networkx object
+1. develop 5x5 graph -- done
+2. create obstacle function -- done
+3. create ant objects -- partially done; movement seems right, but might wanna go through
+    some tests to make sure they run okay
+4. create tuple class instantiates and reference to networkx object
     don't want to access networkx object globally
 
-4. move ants?
+5. move ants?
 
 '''
 import networkx as nx
 import sys
 from matplotlib import pyplot as plt
 import numpy as np
+import random
 
-def initialize_graph(square_grid_number):
+Q = 10
+square_grid_number = 5
+
+class Ant(object):
+    def __init__(self,starting_node,phero=Q):
+        self.memory = [starting_node.node_name()]
+        self.current_state = starting_node.node_name()
+        self.map = starting_node[1] # Node() class tuple, which the 2nd element is the networkx graph object
+        self.first_state = starting_node.node_name()
+        self.travelled = 0
+        self.phero = phero
+        self.routing_table = []
+
+    def generate_routing_table(self):
+        alpha = 1
+        beta = 0
+
+        avail_options = [i for i in self.map.neighbors(self.current_state)]
+
+        list_of_probs = []
+        denom = 0
+
+        for option in avail_options:
+            edge_phero = self.map.edge[self.current_state][option]['phero']
+            edge_vis = 1/(self.map.edge[self.current_state][option]['dist'])
+            prob = (edge_phero**alpha)*(edge_vis**beta)
+            denom += prob
+            list_of_probs.append(prob)
+
+        for each in list_of_probs:
+            each = each/denom
+            self.routing_table.append(each) #  WIPE OUT ROUTING TABLE AFTER EACH MOVE
+
+        return avail_options # list of options to move to
+
+    def choices(self):
+        target_cities = self.generate_routing_table()
+        choice = random.choices(target_cities,weights=self.routing_table)
+        choice = choice[0]
+        return choice
+
+    def move_to_next_state(self):
+        # invoke choices which invokes routing table
+        next_node = self.choices()
+        self.memory.append(next_node)
+        self.travelled += self.map.edge[self.current_state][next_node]['dist']
+        self.current_state = next_node
+
+        self.routing_table = []
+
+    def cycle(self): # each cycle
+        destination_node = square_grid_number**2
+        while self.current_state != destination_node:
+            self.move_to_next_state()
+
+    def lay_pheromones(self):
+        self.phero_per_unit = self.phero/self.travelled
+        backwards_mem = list(reversed(self.memory))
+
+        # Lay pheromone on the networkx graph object
+        for step in range(self.map.number_of_nodes()):
+            head_node = backwards_mem[step]
+            tail_node = backwards_mem[step+1]
+            distance = self.map.edge[head_node][tail_node]['dist']
+            self.map.edge[head_node][tail_node]['phero'] += self.phero_per_unit*distance
+
+class Node(tuple):
+    def __new__(cls,node_name,networkx_graph):
+        return tuple.__new__(cls,(node_name,networkx_graph)) # the static method __new__ creates and return a new instance of a class from its first argument
+
+    def node_name(self):
+        return self[0]
+
+class Ant_Graph(nx.Graph):
+    def __new__(cls,graph_object):
+        return nx.Graph.__new__(cls)
+
+    def evaporate(self):
+        trail_persistence_rate = rho
+        for each in self.edges_iter():
+            self.edge[each[0]][each[1]]['phero'] *= trail_persistence_rate
+
+def add_straight_obstacle(ant_graph,type,size,start_node): # goes from bottom (start_node) to top, left to right (horizontal only)
+    num_of_nodes = len(ant_graph.nodes())
+    row_col_length = np.sqrt(num_of_nodes)
+    if type == 'vertical':
+        nodes_to_remove = [start_node + row_col_length*i for i in range(size)]
+        ant_graph.remove_nodes_from(nodes_to_remove)
+    elif type == 'horizontal':
+        nodes_to_remove = [start_node + i for i in range(size)]
+        ant_graph.remove_nodes_from(nodes_to_remove)
+    elif type == 'diagonal/':
+        nodes_to_remove = [start_node + row_col_length*i + 1 for i in range(size)]
+        ant_graph.remove_nodes_from(nodes_to_remove)
+    elif type == 'diagonal"\"':
+        nodes_to_remove = [start_node + row_col_length*i - 1 for i in range(size)]
+        ant_graph.remove_nodes_from(nodes_to_remove)
+    else:
+        print("Wrong type of vertical obstacle")
+
+    return
+
+def initialize_graph():
 
     int_coords = []
     for i in range(square_grid_number):
         for j in range(square_grid_number):
             int_coords.append([j,i])
-
 
     num_of_nodes = len(int_coords)
     init_phero = 0.001
@@ -43,7 +147,7 @@ def initialize_graph(square_grid_number):
     # Initialize dictionary with coordinates
     pos = dict(zip(range(1,num_of_nodes+1),int_coords))
 
-    graph = nx.Graph()
+    graph = Ant_Graph(nx.Graph())
     graph.add_nodes_from(pos.keys())
 
     for n,p in pos.items():
@@ -119,10 +223,13 @@ def initialize_graph(square_grid_number):
     axes.set_yticks(np.arange(0,6,1))
 
     # Draw network on figure
-    nx.draw_networkx(graph,pos,node_size=175,font_size=9,node_color='w')
-    plt.grid('on')
-    plt.show()
+    # nx.draw_networkx(graph,pos,node_size=175,font_size=9,node_color='w')
+    # plt.grid('on')
+    # plt.show()
 
+    add_straight_obstacle(graph,'vertical',3,8)
+    # nx.draw_networkx(graph,pos,node_size=175,font_size=9,node_color='w')
+    # plt.show()
     return graph
 
 def distance_calc(point1,point2):
@@ -134,7 +241,10 @@ def distance_calc(point1,point2):
     return np.sqrt((x1-x2)**2 + (y1-y2)**2)
 
 def main():
-    initialize_graph(5)
+    ant_graph = initialize_graph()
+    bob = Ant(Node(1,ant_graph))
+    bob.cycle()
+    print(bob.memory)
 
 if __name__ == '__main__':
     main()
