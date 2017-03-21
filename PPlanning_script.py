@@ -22,9 +22,9 @@ TO-DOs:
     some tests to make sure they run okay
 4. create tuple class instantiates and reference to networkx object
     don't want to access networkx object globally -- done
-
-5. move ants?
-
+5. move ants -- done
+6. the main question: what kind of information to collect (and conditions to run in)
+    to relate ant number, graph size, convergence rate etc
 '''
 import networkx as nx
 import sys
