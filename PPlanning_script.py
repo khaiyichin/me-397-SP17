@@ -18,10 +18,10 @@ where the lines (-,|,X) are the connecting links and the circles (O) are the nod
 TO-DOs:
 1. develop 5x5 graph -- done
 2. create obstacle function -- done
-3. create ant objects -- partially done; movement seems right, but might wanna go through
+3. create ant objects -- done; movement seems right, but might wanna go through
     some tests to make sure they run okay
 4. create tuple class instantiates and reference to networkx object
-    don't want to access networkx object globally
+    don't want to access networkx object globally -- done
 
 5. move ants?
 
@@ -32,8 +32,12 @@ from matplotlib import pyplot as plt
 import numpy as np
 import random
 
-Q = 10
-square_grid_number = 5
+Q = 1 # pheromone constant
+R = 10 # total number of ants
+square_grid_number = 3 # size of graph
+decay_rate = 0.5 # trail evaporation
+rho = 1 - decay_rate # trail persistence
+max_cycles = 10 # total number of cycles
 
 class Ant(object):
     def __init__(self,starting_node,phero=Q):
@@ -46,7 +50,7 @@ class Ant(object):
         self.routing_table = []
 
     def generate_routing_table(self):
-        alpha = 1
+        alpha = 2
         beta = 0
 
         avail_options = [i for i in self.map.neighbors(self.current_state)]
@@ -92,7 +96,7 @@ class Ant(object):
         backwards_mem = list(reversed(self.memory))
 
         # Lay pheromone on the networkx graph object
-        for step in range(self.map.number_of_nodes()):
+        for step in range(len(backwards_mem)-1):
             head_node = backwards_mem[step]
             tail_node = backwards_mem[step+1]
             distance = self.map.edge[head_node][tail_node]['dist']
@@ -130,7 +134,7 @@ def add_straight_obstacle(ant_graph,type,size,start_node): # goes from bottom (s
         nodes_to_remove = [start_node + row_col_length*i - 1 for i in range(size)]
         ant_graph.remove_nodes_from(nodes_to_remove)
     else:
-        print("Wrong type of vertical obstacle")
+        print("Wrong type of straight obstacle")
 
     return
 
@@ -227,9 +231,9 @@ def initialize_graph():
     # plt.grid('on')
     # plt.show()
 
-    add_straight_obstacle(graph,'vertical',3,8)
-    # nx.draw_networkx(graph,pos,node_size=175,font_size=9,node_color='w')
-    # plt.show()
+    add_straight_obstacle(graph,'vertical',1,6)
+    nx.draw_networkx(graph,pos,node_size=175,font_size=9,node_color='w')
+    plt.show()
     return graph
 
 def distance_calc(point1,point2):
@@ -240,11 +244,53 @@ def distance_calc(point1,point2):
 
     return np.sqrt((x1-x2)**2 + (y1-y2)**2)
 
-def main():
+def ACO_metaheuristic():
+    list_of_shortest_each_cycle = []
+    current_cycle = 0
+
+    # Initialize NetworkX Graph object
     ant_graph = initialize_graph()
-    bob = Ant(Node(1,ant_graph))
-    bob.cycle()
-    print(bob.memory)
+
+    while (current_cycle != max_cycles):
+        shortest_for_now = ants_generation_and_activity_cycle(ant_graph)
+        list_of_shortest_each_cycle.append(shortest_for_now)
+
+        ant_graph.evaporate()
+        current_cycle += 1
+
+    dist_and_route = list(zip(*list_of_shortest_each_cycle)) # asterisk means unpacking arguments from a list
+    distances = dist_and_route[0]
+
+    optimal_dist = min(distances)
+    ind = dist_and_route[0].index(optimal_dist)
+    optimal_route = list_of_shortest_each_cycle[ind][1]
+
+    print("Shortest tour consists of these cities:",optimal_route,
+    "with a distance of",optimal_dist)
+    print("Number of cycles ran =",current_cycle)
+
+def ants_generation_and_activity_cycle(ant_graph):
+    # Initialize list to store ant objects
+    travelled_ants = [];
+
+    num_of_ants = R
+
+    for ant in range(num_of_ants):
+        travelled_ants.append(Ant(Node(1,ant_graph)))
+        travelled_ants[-1].cycle()
+
+    shortest = 100000
+
+    for each_ant in travelled_ants:
+        if (shortest > each_ant.travelled):
+            shortest = each_ant.travelled
+            result = shortest,each_ant.memory
+        each_ant.lay_pheromones()
+
+    return result
+
+def main():
+    ACO_metaheuristic()
 
 if __name__ == '__main__':
     main()
