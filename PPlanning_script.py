@@ -16,15 +16,20 @@ O-O-O-O-O
 where the lines (-,|,X) are the connecting links and the circles (O) are the nodes.
 
 TO-DOs:
-1. develop 5x5 graph -- done
-2. create obstacle function -- done
-3. create ant objects -- done; movement seems right, but might wanna go through
-    some tests to make sure they run okay
-4. create tuple class instantiates and reference to networkx object
-    don't want to access networkx object globally -- done
-5. move ants -- done
 6. the main question: what kind of information to collect (and conditions to run in)
     to relate ant number, graph size, convergence rate etc
+
+NEW TO-DOs
+1. write function to generate random graph
+    - assign random coordinates 2-D/3-D -- done
+    - include obstacle (node removal) function within, but optional to run -- done
+2. write function to save into yaml format -- done
+    - allow initialization of fresh graph or construct from yaml file -- done
+3. consider setting constraints for start and end node
+    - maybe set them the furthest apart
+    - prohibit removal of them
+4. add distances and pheromones on edges -- done
+5. make sure ant movement is correct
 '''
 import networkx as nx
 import sys
@@ -32,9 +37,13 @@ from matplotlib import pyplot as plt
 import numpy as np
 import random
 
+init_phero = 0.001 # initializing graphs with nonzero pheromones
 Q = 1 # pheromone constant
 R = 10 # total number of ants
-square_grid_number = 3 # size of graph
+size = 10 # size of graph (number of nodes)
+space = 10 # euclidean space in each dimension (max x,y,z coordinates)
+dim = 2 # dimension of graph (either 2 or 3?)
+rand_obstacles = 3 # number of nodes to remove
 decay_rate = 0.5 # trail evaporation
 rho = 1 - decay_rate # trail persistence
 max_cycles = 10 # total number of cycles
@@ -110,7 +119,7 @@ class Node(tuple):
         return self[0]
 
 class Ant_Graph(nx.Graph):
-    def __new__(cls,graph_object):
+    def __new__(cls,networkx_graph_object):
         return nx.Graph.__new__(cls)
 
     def evaporate(self):
@@ -118,123 +127,81 @@ class Ant_Graph(nx.Graph):
         for each in self.edges_iter():
             self.edge[each[0]][each[1]]['phero'] *= trail_persistence_rate
 
-def add_straight_obstacle(ant_graph,type,size,start_node): # goes from bottom (start_node) to top, left to right (horizontal only)
-    num_of_nodes = len(ant_graph.nodes())
-    row_col_length = np.sqrt(num_of_nodes)
-    if type == 'vertical':
-        nodes_to_remove = [start_node + row_col_length*i for i in range(size)]
-        ant_graph.remove_nodes_from(nodes_to_remove)
-    elif type == 'horizontal':
-        nodes_to_remove = [start_node + i for i in range(size)]
-        ant_graph.remove_nodes_from(nodes_to_remove)
-    elif type == 'diagonal/':
-        nodes_to_remove = [start_node + row_col_length*i + 1 for i in range(size)]
-        ant_graph.remove_nodes_from(nodes_to_remove)
-    elif type == 'diagonal"\"':
-        nodes_to_remove = [start_node + row_col_length*i - 1 for i in range(size)]
-        ant_graph.remove_nodes_from(nodes_to_remove)
+def initialize_graph(name=None,yaml_file=None):
+    if yaml_file is None:
+        int_coords = []
+
+        for i in range(size):
+            x = random.randrange(0,space+1)
+            y = random.randrange(0,space+1)
+
+            if dim == 3:
+                z = random.randrange(0,space+1)
+                int_coords.append((x,y,z))
+
+            else:
+                int_coords.append((x,y))
+
+        # Initialize dictionary with coordinates
+        pos = dict(zip(range(1,size+1),int_coords))
+
+        temp = nx.complete_graph(size+1)
+        temp.remove_node(0) # make it easier/convenient to count
+
+        if dim == 3:
+            for n,p in pos.items():
+                temp.node[n]['name'] = n
+                temp.node[n]['x'] = p[0]
+                temp.node[n]['y'] = p[1]
+                temp.node[n]['z'] = p[2]
+
+        else:
+            for n,p in pos.items():
+                temp.node[n]['name'] = n
+                temp.node[n]['x'] = p[0]
+                temp.node[n]['y'] = p[1]
+
+        rand_node_remover(temp,rand_obstacles) # removing some nodes
+        for i in temp.edges_iter():
+            distance = distance_calc(temp.node[i[0]],temp.node[i[1]])
+            temp.add_edge(i[0],i[1],phero=init_phero,dist=distance)
+
+        if name is None:
+            filename = '('+str(size)+'-'+str(rand_obstacles)+')nodes.yaml'
+
+        else:
+            filename = name+'.yaml'
+
+        nx.write_yaml(temp,filename)
+        graph = Ant_Graph(temp)
+
     else:
-        print("Wrong type of straight obstacle")
+        temp = nx.read_yaml(yaml_file)
+        graph = Ant_Graph(temp)
 
-    return
-
-def initialize_graph():
-
-    int_coords = []
-    for i in range(square_grid_number):
-        for j in range(square_grid_number):
-            int_coords.append([j,i])
-
-    num_of_nodes = len(int_coords)
-    init_phero = 0.001
-
-    # Initialize dictionary with coordinates
-    pos = dict(zip(range(1,num_of_nodes+1),int_coords))
-
-    graph = Ant_Graph(nx.Graph())
-    graph.add_nodes_from(pos.keys())
-
-    for n,p in pos.items():
-        graph.node[n]['name'] = n
-        graph.node[n]['x'] = p[0]
-        graph.node[n]['y'] = p[1]
-
-    corner = [1,square_grid_number,(square_grid_number**2)-square_grid_number+1,square_grid_number**2]
-    for i in range(1,num_of_nodes+1):
-        list_of_neighbors = []
-
-        if (i%square_grid_number != 0 and i%square_grid_number != 1 and
-        i/square_grid_number < square_grid_number-1 and int(i/square_grid_number) > 0):
-            list_of_neighbors.append(i-square_grid_number-1)    # SW
-            list_of_neighbors.append(i-square_grid_number)      # S
-            list_of_neighbors.append(i-square_grid_number+1)    # SE
-            list_of_neighbors.append(i-1)                       # W
-            list_of_neighbors.append(i+1)                       # E
-            list_of_neighbors.append(i+square_grid_number-1)    # NW
-            list_of_neighbors.append(i+square_grid_number)      # N
-            list_of_neighbors.append(i+square_grid_number+1)    # NE
-        elif i not in corner:
-            if i%square_grid_number == 0: # right boundary
-                list_of_neighbors.append(i-square_grid_number-1)# SW
-                list_of_neighbors.append(i-square_grid_number)  # S
-                list_of_neighbors.append(i-1)                   # W
-                list_of_neighbors.append(i+square_grid_number)  # N
-                list_of_neighbors.append(i+square_grid_number-1)# NW
-            elif i%square_grid_number == 1: # left boundary
-                list_of_neighbors.append(i-square_grid_number+1)# SE
-                list_of_neighbors.append(i-square_grid_number)  # S
-                list_of_neighbors.append(i+1)                   # E
-                list_of_neighbors.append(i+square_grid_number)  # N
-                list_of_neighbors.append(i+square_grid_number+1)# NE
-            elif i/square_grid_number > square_grid_number-1: # upper boundary
-                list_of_neighbors.append(i-square_grid_number-1)# SW
-                list_of_neighbors.append(i-square_grid_number)  # S
-                list_of_neighbors.append(i-square_grid_number+1)# SE
-                list_of_neighbors.append(i-1)                   # W
-                list_of_neighbors.append(i+1)                   # E
-            else: # lower boundary
-                list_of_neighbors.append(i-1)                   # W
-                list_of_neighbors.append(i+1)                   # E
-                list_of_neighbors.append(i+square_grid_number-1)# NW
-                list_of_neighbors.append(i+square_grid_number)  # N
-                list_of_neighbors.append(i+square_grid_number+1)# NE
-        else: # corners
-            if i==corner[0]: # bottom left
-                list_of_neighbors.append(i+1)                   # E
-                list_of_neighbors.append(i+square_grid_number)  # N
-                list_of_neighbors.append(i+square_grid_number+1)# NE
-            elif i==corner[1]: # bottom right
-                list_of_neighbors.append(i-1)                   # W
-                list_of_neighbors.append(i+square_grid_number)  # N
-                list_of_neighbors.append(i+square_grid_number-1)# NW
-            elif i==corner[2]: # upper left
-                list_of_neighbors.append(i+1)                   # E
-                list_of_neighbors.append(i-square_grid_number)  # S
-                list_of_neighbors.append(i-square_grid_number+1)# SE
-            else: # upper right
-                list_of_neighbors.append(i-1)                   # W
-                list_of_neighbors.append(i-square_grid_number)  # S
-                list_of_neighbors.append(i-square_grid_number-1)# SW
-
-        for j in list_of_neighbors:
-            distance = distance_calc(graph.node[i],graph.node[j])
-            graph.add_edge(i,j,phero=init_phero,dist=distance)
-
-    # Create plot with gridlines
+    # Create plot
     fig = plt.figure()
     axes = fig.gca()
-    axes.set_xticks(np.arange(0,6,1))
-    axes.set_yticks(np.arange(0,6,1))
+    axes.set_xticks(np.arange(0,space+1,1))
+    axes.set_yticks(np.arange(0,space+1,1))
 
-    # Draw network on figure
-    # nx.draw_networkx(graph,pos,node_size=175,font_size=9,node_color='w')
-    # plt.grid('on')
-    # plt.show()
-
-    add_straight_obstacle(graph,'vertical',1,6)
-    nx.draw_networkx(graph,pos,node_size=175,font_size=9,node_color='w')
+    # add_straight_obstacle(graph,'vertical',1,6)
+    positions = dict((i,(j['x'],j['y'])) for i,j in graph.nodes_iter(data=True))
+    nx.draw_networkx(graph,pos=positions,node_size=175,font_size=9,node_color='w')
     plt.show()
+
+    sys.exit()
+
     return graph
+
+def rand_node_remover(graph,num_of_nodes_to_remove):
+    for i in range(num_of_nodes_to_remove):
+        lucky_node = random.randrange(1,len(graph.nodes()))
+
+        while (lucky_node not in graph.nodes()):
+            lucky_node = random.randrange(1,len(graph.nodes()))
+
+        graph.remove_node(lucky_node)
 
 def distance_calc(point1,point2):
     x1 = point1['x']
