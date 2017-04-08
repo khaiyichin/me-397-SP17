@@ -26,12 +26,12 @@ UPDATES:
     - yaml file name needs changing
     - removal of edges ==> look at subroutine for completeness of graph -- done
     - continue separating application vs library code
-    - prohibit u-turn of ants
+    - prohibit u-turn of ants -- done
 '''
 import networkx as nx
 import random
 import sys
-from signal_based import initialize_graph, Ant
+from signal_based import initialize_graph, Ant, Node
 
 # init_phero = 0.001 # initializing graphs with nonzero pheromones
 Q = 10 # pheromone constant
@@ -42,14 +42,14 @@ euc_space = 5 # euclidean space in each dimension (max x,y,z coordinates)
 rand_obstacles = 3 # number of nodes to remove
 # decay_rate = 0.5 # trail evaporation
 # trail_persistence_rate = 1 - decay_rate # trail persistence
-max_cycles = 5 # total number of cycles
+max_cycles = 1 # total number of cycles
 
-class Node(tuple):
-    def __new__(cls,node_name,networkx_graph):
-        return tuple.__new__(cls,(node_name,networkx_graph)) # the static method __new__ creates and return a new instance of a class from its first argument
-
-    def node_name(self):
-        return self[0]
+# class Node(tuple):
+#     def __new__(cls,node_name,networkx_graph):
+#         return tuple.__new__(cls,(node_name,networkx_graph)) # the static method __new__ creates and return a new instance of a class from its first argument
+#
+#     def node_name(self):
+#         return self[0]
 
 def ACO_metaheuristic():
     list_of_shortest_each_cycle = []

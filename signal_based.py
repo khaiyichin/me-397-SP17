@@ -25,6 +25,9 @@ class Ant(object):
 
         avail_options = [i for i in self.map.neighbors(self.current_state)]
 
+        if len(avail_options) != 1 and len(self.memory) > 1: # preventing u-turns unless at dead end
+            avail_options = [i for i in avail_options if i != self.memory[-2]]
+
         list_of_probs = []
         denom = 0
 
@@ -80,6 +83,13 @@ class Ant_Graph(nx.Graph):
         self.leftover = 1 - evaporation_rate
         for each in self.edges_iter():
             self.edge[each[0]][each[1]]['phero'] *= self.leftover
+
+class Node(tuple):
+    def __new__(cls,node_name,networkx_graph):
+        return tuple.__new__(cls,(node_name,networkx_graph)) # the static method __new__ creates and return a new instance of a class from its first argument
+
+    def node_name(self):
+        return self[0]
 
 def initialize_graph(name=None,yaml_file=None,space=0,size=0,
     init_phero=0.001,num_of_nodes_to_remove=0,num_of_edges_to_remove=0):
@@ -144,14 +154,6 @@ def initialize_graph(name=None,yaml_file=None,space=0,size=0,
         graph = Ant_Graph(temp)
 
     return graph
-
-
-class Node(tuple):
-    def __new__(cls,node_name,networkx_graph):
-        return tuple.__new__(cls,(node_name,networkx_graph)) # the static method __new__ creates and return a new instance of a class from its first argument
-
-    def node_name(self):
-        return self[0]
 
 def distance_calc(point1,point2):
     x1 = point1.x
