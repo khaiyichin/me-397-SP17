@@ -4,6 +4,10 @@ from matplotlib import pyplot as plt
 import numpy as np
 import random
 
+class Point(object):
+    def __init__(self,x,y):
+        self.x = x
+        self.y = y
 
 class Ant(object):
     def __init__(self,starting_node_object,phero=10):
@@ -78,7 +82,7 @@ class Ant_Graph(nx.Graph):
             self.edge[each[0]][each[1]]['phero'] *= self.leftover
 
 def initialize_graph(name=None,yaml_file=None,space=0,size=0,
-    init_phero=0.001):
+    init_phero=0.001,num_of_nodes_to_remove=0,num_of_edges_to_remove=0):
     if yaml_file is None:
         if (size > (space+1)**2):
             print('The allowed space is too small for the number of nodes.')
@@ -104,16 +108,21 @@ def initialize_graph(name=None,yaml_file=None,space=0,size=0,
         temp.remove_node(0) # make it easier/convenient to count
         temp.remove_edge(1,size) # removing the direct link that connects start and end node
 
+        points = []
         for n,p in pos.items():
-            temp.node[n]['x'] = p[0]
-            temp.node[n]['y'] = p[1]
+            points.append(Point(p[0],p[1]))
 
         for i in temp.edges_iter():
-            distance = distance_calc(temp.node[i[0]],temp.node[i[1]])
+            distance = distance_calc(points[i[0]-1],points[i[1]-1]) # the indices for the 'points' list start from 0, whereas i (node numbers) start from 1
             temp.add_edge(i[0],i[1],phero=init_phero,dist=distance)
 
+        # Remove nodes and edges to create obstacles
+        temp = rand_node_remover(temp,num_of_nodes_to_remove)
+        temp = rand_edge_remover(temp,num_of_edges_to_remove)
+
         if name is None:
-            filename = '('+str(size)+'-'+')nodes.yaml'
+            filename = str(size-num_of_nodes_to_remove)+'nodes'+ \
+                str(len(temp.edges()))+'edges.yaml'
 
         else:
             filename = name+'.yaml'
@@ -121,20 +130,18 @@ def initialize_graph(name=None,yaml_file=None,space=0,size=0,
         nx.write_yaml(temp,filename)
         graph = Ant_Graph(temp)
 
+        # Create plot
+        fig = plt.figure()
+        axes = fig.gca()
+        axes.set_xticks(np.arange(0,space+1,1))
+        axes.set_yticks(np.arange(0,space+1,1))
+
+        nx.draw_networkx(graph,pos,node_size=175,font_size=9,node_color='w')
+        plt.savefig(filename[:-5],format='PNG')
+
     else:
         temp = nx.read_yaml(yaml_file)
         graph = Ant_Graph(temp)
-
-    # Create plot
-    fig = plt.figure()
-    axes = fig.gca()
-    axes.set_xticks(np.arange(0,space+1,1))
-    axes.set_yticks(np.arange(0,space+1,1))
-
-    # add_straight_obstacle(graph,'vertical',1,6)
-    positions = dict((i,(j['x'],j['y'])) for i,j in graph.nodes_iter(data=True))
-    nx.draw_networkx(graph,pos=positions,node_size=175,font_size=9,node_color='w')
-    plt.show()
 
     return graph
 
@@ -147,10 +154,10 @@ class Node(tuple):
         return self[0]
 
 def distance_calc(point1,point2):
-    x1 = point1['x']
-    x2 = point2['x']
-    y1 = point1['y']
-    y2 = point2['y']
+    x1 = point1.x
+    x2 = point2.x
+    y1 = point1.y
+    y2 = point2.y
 
     return np.sqrt((x1-x2)**2 + (y1-y2)**2)
 
@@ -162,3 +169,23 @@ def rand_node_remover(graph,num_of_nodes_to_remove):
             lucky_node = random.randrange(2,len(graph.nodes()))
 
         graph.remove_node(lucky_node)
+
+    return graph
+
+def rand_edge_remover(graph,num_of_edges_to_remove):
+    if (num_of_edges_to_remove >= len(graph.nodes())-2):
+        print('Warning: The edge removal might not find a solution.')
+
+    connected_condition = False # the while loop should only end when the removed edges doesn't disconnect the graph
+
+    while (connected_condition == False):
+        candidate_graph = graph.copy()
+
+        for i in range(num_of_edges_to_remove):
+            lucky_edge = random.choice(candidate_graph.edges())
+
+            candidate_graph.remove_edge(lucky_edge[0],lucky_edge[1])
+
+        connected_condition = nx.is_connected(candidate_graph)
+
+    return candidate_graph

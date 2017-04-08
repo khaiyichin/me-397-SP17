@@ -24,10 +24,12 @@ NEW TO-DOs
 
 UPDATES:
     - yaml file name needs changing
-    - removal of edges ==> look at subroutine for completeness of graph
+    - removal of edges ==> look at subroutine for completeness of graph -- done
     - continue separating application vs library code
+    - prohibit u-turn of ants
 '''
 import networkx as nx
+import random
 import sys
 from signal_based import initialize_graph, Ant
 
@@ -54,7 +56,7 @@ def ACO_metaheuristic():
     current_cycle = 0
 
     # Initialize NetworkX Graph object
-    ant_graph = initialize_graph(yaml_file='(5-3)nodes.yaml',space=euc_space,size=nodes)
+    ant_graph = initialize_graph(yaml_file=None,space=euc_space,size=nodes,num_of_edges_to_remove=4)
 
     while (current_cycle != max_cycles):
         shortest_for_now = ants_generation_and_activity_cycle(ant_graph)
