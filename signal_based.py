@@ -15,6 +15,7 @@ class Ant(object):
         self.current_state = starting_node_object.node_name()
         self.map = starting_node_object[1] # Node() class tuple, which the 2nd element is the networkx graph object
         self.first_state = starting_node_object.node_name()
+        self.travelled_edges = []
         self.travelled = 0
         self.phero = phero
         self.routing_table = []
@@ -40,7 +41,7 @@ class Ant(object):
 
         for each in list_of_probs:
             each = each/denom
-            self.routing_table.append(each) #  WIPE OUT ROUTING TABLE AFTER EACH MOVE
+            self.routing_table.append(each)
 
         return avail_options # list of options to move to
 
@@ -61,8 +62,15 @@ class Ant(object):
 
     def cycle(self): # each cycle
         destination_node = self.map.nodes()[-1] # the final node
+
         while self.current_state != destination_node:
             self.move_to_next_state()
+
+        travelled_edges = [(self.memory[i],self.memory[i+1]) for i in range(len(self.memory)-1)] # compile a list of travelled edges
+        travelled_edges = [sorted(i) for i in travelled_edges] # arrange the representation of the travelled edges' tuples
+        travelled_edges = [(i,j) for i,j in travelled_edges] # put them into tuples in order to count them
+
+        self.travelled_edges = travelled_edges
 
     def lay_pheromones(self):
         self.phero_per_unit = self.phero/self.travelled
@@ -79,8 +87,11 @@ class Ant_Graph(nx.Graph):
     def __new__(cls,networkx_graph_object):
         return nx.Graph.__new__(cls)
 
-    def evaporate(self,evaporation_rate=0.5):
+    def initialize(self,evaporation_rate=0.5):
+        self.ant_counter_per_edge = {i:0 for i in self.edges()}
         self.leftover = 1 - evaporation_rate
+
+    def evaporate(self):
         for each in self.edges_iter():
             self.edge[each[0]][each[1]]['phero'] *= self.leftover
 
@@ -152,6 +163,8 @@ def initialize_graph(name=None,yaml_file=None,space=0,size=0,
     else:
         temp = nx.read_yaml(yaml_file)
         graph = Ant_Graph(temp)
+
+    graph.initialize()
 
     return graph
 
