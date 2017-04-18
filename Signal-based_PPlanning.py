@@ -1,5 +1,5 @@
 '''
-Path Planning with ACO
+Path Planning with Signal Based ACO
 
 TO-DOs:
 6. the main question: what kind of information to collect (and conditions to run in)
@@ -23,7 +23,7 @@ NEW TO-DOs
     - not interested in optimal solution
 
 UPDATES:
-    - yaml file name needs changing
+    - yaml file name needs changing -- done
     - removal of edges ==> look at subroutine for completeness of graph -- done
     - continue separating application vs library code
     - prohibit u-turn of ants -- done
@@ -35,12 +35,12 @@ from signal_based import initialize_graph, Ant, Node
 
 # init_phero = 0.001 # initializing graphs with nonzero pheromones
 Q = 10 # pheromone constant
-num_of_ants = 3 # total number of ants
-nodes = 7 # size of graph (number of nodes)
+num_of_ants = 10000 # total number of ants
+nodes = 5 # size of graph (number of nodes)
 euc_space = 10 # euclidean space in each dimension (max x,y coordinates)
 rand_nodes = 0 # number of nodes to remove
 rand_edges = 4 # number of edges to remove
-max_cycles = 20 # total number of cycles
+max_cycles = 1 # total number of cycles
 
 def ACO_metaheuristic():
     # Initialize NetworkX Graph object
@@ -79,29 +79,54 @@ def ACO_metaheuristic():
     ind = dist_and_route[0].index(optimal_dist)
     optimal_route = shortest_each_cycle[ind][1]
 
-    print("Shortest tour consists of these cities:",optimal_route,
-    "with a distance of",optimal_dist)
-    print("Number of cycles ran =",current_cycle)
+    # print("Shortest tour consists of these cities:",optimal_route,
+    # "with a distance of",optimal_dist)
+    # print("Number of cycles ran =",current_cycle)
 
     # Process data for number of ants
-    print("Number of ants on each edges on the last cycle:",
-    num_of_ants_per_edge_each_cycle[-1])
-    print("The shortest tour made on the last cycle:",shortest_for_now[1])
+    # print("Number of ants on each edges on the last cycle:",
+    # num_of_ants_per_edge_each_cycle[-1])
+    # print("The shortest tour made on the last cycle:",shortest_for_now[1])
 
     # Process data for pheromone levels
-    print("The pheromone levels on the last cycle:",pheromone_levels_each_cycle[-1])
+    # print("The pheromone levels on the last cycle:",pheromone_levels_each_cycle[-1])
 
 def ants_generation_and_activity_cycle(ant_graph):
     # Initialize list to store ant objects
-    travelled_ants = [];
+    travelled_ants = []
+    average_distance = []
+    total_ant_distance = 0
 
     # Shoot ants through graph one at a time
-    for ant in range(num_of_ants):
+    for ant in range(1,num_of_ants+1):
         travelled_ants.append(Ant(Node(1,ant_graph)))
         travelled_ants[-1].cycle()
+        current_ant_distance = travelled_ants[-1].travelled
+        total_ant_distance += current_ant_distance
 
         for i in ant_graph.ant_counter_per_edge:
             ant_graph.ant_counter_per_edge[i] += travelled_ants[-1].travelled_edges.count(i)
+
+        for j in range(len(travelled_ants[-1].memory)-1):
+            head_node = travelled_ants[-1].memory[j+1]
+            tail_node = travelled_ants[-1].memory[j]
+
+            # Declaring 'edge' as a key which is a tuple
+            edge = (tail_node,head_node)
+            edge = sorted(edge) # the dictionary keys are tuples which values are in ascending order
+            edge = (edge[0],edge[1])
+
+            num_of_passing_ants = ant_graph.ant_counter_per_edge[edge]
+            ant_graph.total_ant_distance_counter[edge] += current_ant_distance
+            cumulative_distance_on_edge = ant_graph.total_ant_distance_counter[edge]
+            ant_graph.average_dist_per_edge[edge] = num_of_passing_ants/cumulative_distance_on_edge
+
+        # Process data for average distance traveled on each edge
+        print("Total ants =",ant,"; Distance per Edge =",ant_graph.average_dist_per_edge)
+
+        # Process data for average distance traveled on entire graph (all edges)
+        average_distance.append(ant/total_ant_distance)
+        print("Total ants =",ant,"; Average Distance =",average_distance[-1])
 
     shortest = 100000000
 

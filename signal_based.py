@@ -1,3 +1,7 @@
+'''
+Module for signal based ant colony optimization method.
+'''
+
 import networkx as nx
 import sys
 from matplotlib import pyplot as plt
@@ -89,6 +93,8 @@ class Ant_Graph(nx.Graph):
 
     def initialize(self,evaporation_rate=0.5):
         self.ant_counter_per_edge = {i:0 for i in self.edges()}
+        self.total_ant_distance_counter = {i:0 for i in self.edges()}
+        self.average_dist_per_edge = {i:0 for i in self.edges()}
         self.leftover = 1 - evaporation_rate
 
     def evaporate(self):
