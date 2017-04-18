@@ -112,8 +112,7 @@ def ants_generation_and_activity_cycle(ant_graph):
             tail_node = travelled_ants[-1].memory[j]
 
             # Declaring 'edge' as a key which is a tuple
-            edge = (tail_node,head_node)
-            edge = sorted(edge) # the dictionary keys are tuples which values are in ascending order
+            edge = sorted([tail_node,head_node]) # the dictionary keys are tuples which values are in ascending order
             edge = (edge[0],edge[1])
 
             num_of_passing_ants = ant_graph.ant_counter_per_edge[edge]
