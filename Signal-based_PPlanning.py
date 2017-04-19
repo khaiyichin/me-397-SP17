@@ -33,7 +33,6 @@ import random
 import sys
 from signal_based import initialize_graph, Ant, Node
 
-# init_phero = 0.001 # initializing graphs with nonzero pheromones
 Q = 10 # pheromone constant
 num_of_ants = 10000 # total number of ants
 nodes = 5 # size of graph (number of nodes)
