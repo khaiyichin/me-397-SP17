@@ -15,6 +15,13 @@ Required classes:
     - contains n, d_l, p, d_f (mostly counters or traces of travels)
     - link function
 
+
+TO-DOs:
+1. Complete Link() class
+2. Complete Ant_Graph() class
+    - node_execution method
+    - might have to have a reset method for the nodes to reinitialize ant mass
+3. Add end node function (draining/retaining ant mass)
 '''
 
 import networkx as nx
@@ -29,49 +36,72 @@ class Node(tuple):
     def __new__(cls,node_name,networkx_graph):
         return tuple.__new__(cls,(node_name,networkx_graph)) # the static method __new__ creates and return a new instance of a class from its first argument
 
-    def initialize(self):
+    def initialize(self,start_node=False,end_node=False,ant_mass=100):
         self.node_name = self[0]
         self.graph = self[1]
-        self.in_links = [(i,self.node_name) for i in self[1].neighbors(self.node_name)]
-        self.out_links = [(self.node_name,i) for i in self[1].neighbors(self.node_name)]
+        self.links = []
+        self.links_ascend = [] # for current node n, links are of the form (a,n), a < n
+        self.links_descend = [] # for current node n, links are of the form (b,n), b > n
         self.ant_mass = 0
+        self.avg_distance = 0
+        self.out_link_phero = 0
+        self.start_node = start_node
+
+        connected_links = [(i,self.node_name) for i in self[1].neighbors(self.node_name)]
+        for i in connected_links:
+            index = sorted([i[0],i[1]])
+            index = (index[0],index[1])
+
+            link_object = [link_tuple for link_tuple in self.graph.links
+            if link_tuple[:][0] == index]
+
+            link_object = link_object[0] # to get it out of the list
+            self.links.append(link_object)
+
+            if i[0] > i[1]: # i[1] is the node_name ==> descending edge
+                self.links_descend.append(link_object)
+
+            else:
+                self.links_ascend.append(link_object)
+
+        # self.end_node = end_node
+        print('all',self.links)
+        if self.start_node == True:
+            self.add_ant_mass(ant_mass)
+
+        # elif self.end_node == True:
+        #     self.retain_mass # ????
 
     def add_ant_mass(self,ant_mass):
         self.ant_mass += ant_mass
 
     # def retain_ant_mass(self): # For the end node
-    def random(self):
-        x = (1,3)
-        print(self.graph.link[i].ant_mass )
-    # ADDRESS THIS THE FIRST THING YOU DO! still need to properly obtain the ant_mass; trouble referring to the right index in the ant_graph.links list
-    # def fold(self):
-    #     list_of_link_tuples = [i[0] for i in self.graph.links]
-    #     for i in self.in_links:
-    #         if i[0] > i[1]:
-    #             i = sorted(i[0],i[1])
-    #             self.ant_mass += self.graph.links[i].ant_mass_descend
-    #         else:
-    #             self.ant_mass += self.graph.links[i].ant_mass_ascend
+    def fold_function(self):
+        for i in self.links_descend:
+            self.ant_mass += i.ant_mass_descend
+            self.avg_distance += i.ant_mass_descend*i.avg_distance_descend
 
-        for i in self.in_links:
-            if i[0] > i[1]:
-                self.avg_distance += self.graph.links[i].avg_distance_descend
+        for i in self.links_ascend:
+            self.ant_mass += i.ant_mass_ascend
+            self.avg_distance += i.ant_mass_ascend*i.avg_distance_ascend
 
-            else:
-                self.avg_distance += self.graph.links[i].avg_distance_descend
+        self.avg_distance = self.avg_distance/self.ant_mass
 
-        in_distance = [i.average_distance for i in self]
-        self.ant_mass = sum(in_ant_mass)
-        self.avg_distance = np.multiply(in_distance,in_ant_mass)/self.ant_mass
+    def split_fold_function(self):
+        out_phero = [i.phero for i in self.links]
+        self.out_link_phero = sum(out_phero)
 
-    def split_fold(self):
-        out_phero = [i.phero for i in self.out_links]
-        self.total_out_phero = sum(out_phero)
+    def split_function(self):
+        for i in self.links_descend:
+            i.ant_mass_ascend = self.ant_mass*i.phero/self.out_link_phero
+            i.avg_distance_ascend = self.avg_distance
 
-    def split(self,target_link):
-        out_distance = self.average_distance
-        out_ant_mass = target_link.phero*self.ant_mass/self.total_out_phero
-        return out_ant_mass
+        for i in self.links_ascend:
+            i.ant_mass_descend = self.ant_mass*i.phero/self.out_link_phero
+            i.avg_distance_ascend = self.avg_distance
+
+        self.ant_mass = 0
+        self.avg_distance = 0
 
 class Link(tuple):
     def __new__(cls,link_name,networkx_graph):
@@ -79,7 +109,7 @@ class Link(tuple):
 
     def initialize(self):
         self.link_name = self[0] # a tuple containing the head and tail node connected
-        self.graph = self[1]
+        # self.graph = self[1]
         self.link_distance = self[1].edge[self.link_name[0]][self.link_name[1]]['dist'] # d_l
         self.phero = self[1].edge[self.link_name[0]][self.link_name[1]]['phero'] # p
         self.ant_mass_ascend = 0 # n
@@ -87,24 +117,28 @@ class Link(tuple):
         self.avg_distance_ascend = 0 # d_f from low to high (eg. 1-2)
         self.avg_distance_descend = 0 # d_f from high to low (eg. 2-1)
 
-    def link_ascend(signal_avg_distance):
-        self.avg_distance_ascend = signal_avg_distance + self.link_distance
+    def reset(self):
+        self.ant_mass_ascend = 0 # n
+        self.ant_mass_descend = 0 # n
+        self.avg_distance_ascend = 0 # d_f from low to high (eg. 1-2)
+        self.avg_distance_descend = 0 # d_f from high to low (eg. 2-1)
 
-    def link_descend(signal_avg_distance):
-        self.avg_distance_descend = signal_avg_distance + self.link_distance
+    def link_function(self):
+        self.avg_distance_ascend += self.link_distance
+        self.avg_distance_descend += self.link_distance
 
 class Ant_Graph(nx.Graph):
     def __new__(cls,networkx_graph_object):
         return nx.Graph.__new__(cls)
 
     def initialize(self,evaporation_rate=0.5):
-        print('hey')
         self.nodes = [Node(i,self) for i in self.nodes()]
-        for i in self.nodes:
+        self.links = [Link(i,self) for i in self.edges()]
+
+        for i in self.links:
             i.initialize()
 
-        self.links = [Link(i,self) for i in self.edges()]
-        for i in self.links:
+        for i in self.nodes:
             i.initialize()
 
         self.leftover = 1 - evaporation_rate
@@ -113,6 +147,11 @@ class Ant_Graph(nx.Graph):
         # fire nodes first (so that signal is initiated/launched) then activate link function
         # which then continues the signal to the next node to the fold function
         # look at all nodes
+        # nodes.all.split_fold
+        # nodes.all.split
+        # links.all.link
+        # nodes.all.fold
+        # links.reset
 
     def evaporate(self):
         for each in self.edges_iter():

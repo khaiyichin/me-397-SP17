@@ -23,9 +23,13 @@ max_cycles = 1 # total number of cycles
 def main():
     ant_graph = initialize_graph(yaml_file=None,space=euc_space,size=nodes,
     num_of_nodes_to_remove=rand_nodes,num_of_edges_to_remove=rand_edges)
-    print(ant_graph.links)
-    print(ant_graph.nodes)
-    print(ant_graph.nodes[0].fold())
+    print(ant_graph.nodes[2].node_name)
+    for i in ant_graph.links:
+        i.ant_mass_ascend = 10
+        i.ant_mass_descend = 27
+        i.link_function()
+    print(ant_graph.nodes[2].fold_function())
+    ant_graph.nodes[2].split_fold_function()
 
 if __name__ == '__main__':
     main()
