@@ -17,11 +17,13 @@ Required classes:
 
 
 TO-DOs:
-1. Complete Link() class
-2. Complete Ant_Graph() class
+1. Complete Link() class -- done
+2. Complete Ant_Graph() class -- mostly done, but the fold function seems to
+    give average distances increasing forever (sometimes the distance decreases)
+    * also look at end nodes average distance!
     - node_execution method
     - might have to have a reset method for the nodes to reinitialize ant mass
-3. Add end node function (draining/retaining ant mass)
+3. Add end node function (draining/retaining ant mass) -- done under Ant_Graph() method
 '''
 
 import networkx as nx
@@ -36,7 +38,7 @@ class Node(tuple):
     def __new__(cls,node_name,networkx_graph):
         return tuple.__new__(cls,(node_name,networkx_graph)) # the static method __new__ creates and return a new instance of a class from its first argument
 
-    def initialize(self,start_node=False,end_node=False,ant_mass=100):
+    def initialize(self):
         self.node_name = self[0]
         self.graph = self[1]
         self.links = []
@@ -45,7 +47,6 @@ class Node(tuple):
         self.ant_mass = 0
         self.avg_distance = 0
         self.out_link_phero = 0
-        self.start_node = start_node
 
         connected_links = [(i,self.node_name) for i in self[1].neighbors(self.node_name)]
         for i in connected_links:
@@ -64,16 +65,11 @@ class Node(tuple):
             else:
                 self.links_ascend.append(link_object)
 
-        # self.end_node = end_node
-        print('all',self.links)
-        if self.start_node == True:
-            self.add_ant_mass(ant_mass)
-
-        # elif self.end_node == True:
-        #     self.retain_mass # ????
-
     def add_ant_mass(self,ant_mass):
         self.ant_mass += ant_mass
+
+    def remove_all_mass(self):
+        self.ant_mass = 0
 
     # def retain_ant_mass(self): # For the end node
     def fold_function(self):
@@ -85,7 +81,11 @@ class Node(tuple):
             self.ant_mass += i.ant_mass_ascend
             self.avg_distance += i.ant_mass_ascend*i.avg_distance_ascend
 
-        self.avg_distance = self.avg_distance/self.ant_mass
+        if self.ant_mass == 0:
+            self.avg_distance = 0
+
+        else:
+            self.avg_distance = self.avg_distance/self.ant_mass
 
     def split_fold_function(self):
         out_phero = [i.phero for i in self.links]
@@ -141,6 +141,8 @@ class Ant_Graph(nx.Graph):
         for i in self.nodes:
             i.initialize()
 
+        self.nodes[0].add_ant_mass(100)
+
         self.leftover = 1 - evaporation_rate
 
     # def node_execution(self):
@@ -152,6 +154,24 @@ class Ant_Graph(nx.Graph):
         # links.all.link
         # nodes.all.fold
         # links.reset
+
+    def node_execution(self):
+        for i in self.nodes:
+            i.split_fold_function()
+            i.split_function()
+
+        for i in self.links:
+            i.link_function()
+
+        for i in self.nodes:
+            i.fold_function()
+
+        for i in self.links:
+            i.reset()
+
+    def ants_generation_and_activity_cycle(self):
+        self.node_execution()
+        self.nodes[-1].remove_all_mass()
 
     def evaporate(self):
         for each in self.edges_iter():
