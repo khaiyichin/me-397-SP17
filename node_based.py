@@ -87,18 +87,32 @@ class Node(tuple):
         else:
             self.avg_distance = self.avg_distance/self.ant_mass
 
+        if self.node_name == len(self.graph.nodes):
+            self.remove_all_mass()
+
     def split_fold_function(self):
         out_phero = [i.phero for i in self.links]
         self.out_link_phero = sum(out_phero)
 
-    def split_function(self):
+    def split_function(self): # note that for outward links the edge order switches (ascend => descend)
+        if self.node_name == len(self.graph.nodes): # final node
+
+            for i in self.links_ascend:
+                i.ant_mass_descend = 0
+                i.avg_distance_descend = 0
+
+            self.ant_mass = 0
+            self.avg_distance = 0
+
+            return
+
         for i in self.links_descend:
             i.ant_mass_ascend = self.ant_mass*i.phero/self.out_link_phero
             i.avg_distance_ascend = self.avg_distance
 
         for i in self.links_ascend:
             i.ant_mass_descend = self.ant_mass*i.phero/self.out_link_phero
-            i.avg_distance_ascend = self.avg_distance
+            i.avg_distance_descend = self.avg_distance
 
         self.ant_mass = 0
         self.avg_distance = 0
@@ -124,8 +138,24 @@ class Link(tuple):
         self.avg_distance_descend = 0 # d_f from high to low (eg. 2-1)
 
     def link_function(self):
-        self.avg_distance_ascend += self.link_distance
-        self.avg_distance_descend += self.link_distance
+        print(self.link_name,self.avg_distance_ascend,self.avg_distance_descend)
+        if self.ant_mass_ascend and self.ant_mass_descend != 0:
+            self.avg_distance_ascend += self.link_distance
+            self.avg_distance_descend += self.link_distance
+
+        elif self.ant_mass_ascend != 0:
+            self.avg_distance_ascend += self.link_distance
+            self.avg_distance_descend = 0
+
+        elif self.ant_mass_descend != 0:
+            self.avg_distance_ascend = 0
+            self.avg_distance_descend += self.link_distance
+
+        else:
+            self.avg_distance_descend = 0
+            self.avg_distance_ascend = 0
+
+
 
 class Ant_Graph(nx.Graph):
     def __new__(cls,networkx_graph_object):
@@ -145,16 +175,6 @@ class Ant_Graph(nx.Graph):
 
         self.leftover = 1 - evaporation_rate
 
-    # def node_execution(self):
-        # fire nodes first (so that signal is initiated/launched) then activate link function
-        # which then continues the signal to the next node to the fold function
-        # look at all nodes
-        # nodes.all.split_fold
-        # nodes.all.split
-        # links.all.link
-        # nodes.all.fold
-        # links.reset
-
     def node_execution(self):
         for i in self.nodes:
             i.split_fold_function()
@@ -171,7 +191,6 @@ class Ant_Graph(nx.Graph):
 
     def ants_generation_and_activity_cycle(self):
         self.node_execution()
-        self.nodes[-1].remove_all_mass()
 
     def evaporate(self):
         for each in self.edges_iter():

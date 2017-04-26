@@ -6,6 +6,8 @@ TO-DOs:
     - node based executions have more power in node and links
 2. Integrate a node_based.py module -- done
 3. Go through the fold function; it seems like something isn't quite right
+    - should be good enough, but double check.
+    - once okay, clean up code
 '''
 import networkx as nx
 import random
@@ -24,10 +26,12 @@ def main():
     ant_graph = initialize_graph(yaml_file=None,space=euc_space,size=nodes,
     num_of_nodes_to_remove=rand_nodes,num_of_edges_to_remove=rand_edges)
     print(ant_graph.edges(data=True))
-    for i in range(500):
+    print([(i.node_name,i.ant_mass,i.avg_distance) for i in ant_graph.nodes])
+    print('node execution')
+    for i in range(3):
         ant_graph.ants_generation_and_activity_cycle()
         print([(i.node_name,i.ant_mass,i.avg_distance) for i in ant_graph.nodes])
-
+        print('node execution')
 
 if __name__ == '__main__':
     main()
