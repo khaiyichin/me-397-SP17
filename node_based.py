@@ -20,10 +20,12 @@ TO-DOs:
 1. Complete Link() class -- done
 2. Complete Ant_Graph() class -- mostly done, but the fold function seems to
     give average distances increasing forever (sometimes the distance decreases)
-    * also look at end nodes average distance!
-    - node_execution method
-    - might have to have a reset method for the nodes to reinitialize ant mass
+    * also look at end nodes average distance! -- looks okay
+    - node_execution method -- done
+    - might have to have a reset method for the nodes to reinitialize ant mass -- split_function
 3. Add end node function (draining/retaining ant mass) -- done under Ant_Graph() method
+4. Ant mass is wrong!! ==> average_distance is also wrong
+    - average distance should settle
 '''
 
 import networkx as nx
@@ -45,6 +47,7 @@ class Node(tuple):
         self.links_ascend = [] # for current node n, links are of the form (a,n), a < n
         self.links_descend = [] # for current node n, links are of the form (b,n), b > n
         self.ant_mass = 0
+        self.travelled_ant_mass = 0
         self.avg_distance = 0
         self.out_link_phero = 0
 
@@ -53,7 +56,7 @@ class Node(tuple):
             index = sorted([i[0],i[1]])
             index = (index[0],index[1])
 
-            link_object = [link_tuple for link_tuple in self.graph.links
+            link_object = [link_tuple for link_tuple in self.graph.links_list
             if link_tuple[:][0] == index]
 
             link_object = link_object[0] # to get it out of the list
@@ -71,7 +74,6 @@ class Node(tuple):
     def remove_all_mass(self):
         self.ant_mass = 0
 
-    # def retain_ant_mass(self): # For the end node
     def fold_function(self):
         for i in self.links_descend:
             self.ant_mass += i.ant_mass_descend
@@ -81,13 +83,15 @@ class Node(tuple):
             self.ant_mass += i.ant_mass_ascend
             self.avg_distance += i.ant_mass_ascend*i.avg_distance_ascend
 
+        self.travelled_ant_mass += self.ant_mass
+
         if self.ant_mass == 0:
             self.avg_distance = 0
 
         else:
-            self.avg_distance = self.avg_distance/self.ant_mass
+            self.avg_distance = self.avg_distance/self.travelled_ant_mass
 
-        if self.node_name == len(self.graph.nodes):
+        if self.node_name == len(self.graph.nodes_list):
             self.remove_all_mass()
 
     def split_fold_function(self):
@@ -95,7 +99,7 @@ class Node(tuple):
         self.out_link_phero = sum(out_phero)
 
     def split_function(self): # note that for outward links the edge order switches (ascend => descend)
-        if self.node_name == len(self.graph.nodes): # final node
+        if self.node_name == len(self.graph.nodes_list): # final node
 
             for i in self.links_ascend:
                 i.ant_mass_descend = 0
@@ -138,7 +142,6 @@ class Link(tuple):
         self.avg_distance_descend = 0 # d_f from high to low (eg. 2-1)
 
     def link_function(self):
-        print(self.link_name,self.avg_distance_ascend,self.avg_distance_descend)
         if self.ant_mass_ascend and self.ant_mass_descend != 0:
             self.avg_distance_ascend += self.link_distance
             self.avg_distance_descend += self.link_distance
@@ -155,38 +158,39 @@ class Link(tuple):
             self.avg_distance_descend = 0
             self.avg_distance_ascend = 0
 
-
-
 class Ant_Graph(nx.Graph):
     def __new__(cls,networkx_graph_object):
         return nx.Graph.__new__(cls)
 
     def initialize(self,evaporation_rate=0.5):
-        self.nodes = [Node(i,self) for i in self.nodes()]
-        self.links = [Link(i,self) for i in self.edges()]
+        self.nodes_list = [Node(i,self) for i in self.nodes()]
+        self.links_list = [Link(i,self) for i in self.edges()]
 
-        for i in self.links:
+        for i in self.links_list:
             i.initialize()
 
-        for i in self.nodes:
+        for i in self.nodes_list:
             i.initialize()
 
-        self.nodes[0].add_ant_mass(100)
+        self.nodes_list[0].add_ant_mass(100)
 
         self.leftover = 1 - evaporation_rate
 
     def node_execution(self):
-        for i in self.nodes:
+        for i in self.nodes_list:
             i.split_fold_function()
             i.split_function()
 
-        for i in self.links:
+        for i in self.links_list:
             i.link_function()
 
-        for i in self.nodes:
+        for i in self.links_list:
+            print([i.link_name,(i.ant_mass_ascend,i.avg_distance_ascend),(i.ant_mass_descend,i.avg_distance_descend)])
+
+        for i in self.nodes_list:
             i.fold_function()
 
-        for i in self.links:
+        for i in self.links_list:
             i.reset()
 
     def ants_generation_and_activity_cycle(self):
