@@ -32,18 +32,19 @@ import networkx as nx
 import random
 import sys
 from signal_based import initialize_graph, Ant, Node
+import matplotlib.pyplot as plt
 
 Q = 10 # pheromone constant
 num_of_ants = 10000 # total number of ants
-nodes = 5 # size of graph (number of nodes)
+nodes = 4 # size of graph (number of nodes)
 euc_space = 10 # euclidean space in each dimension (max x,y coordinates)
 rand_nodes = 0 # number of nodes to remove
-rand_edges = 4 # number of edges to remove
+rand_edges = 0 # number of edges to remove
 max_cycles = 1 # total number of cycles
 
 def ACO_metaheuristic():
     # Initialize NetworkX Graph object
-    ant_graph = initialize_graph(yaml_file=None,space=euc_space,size=nodes,
+    ant_graph = initialize_graph(yaml_file='5nodes5edges.yaml',space=euc_space,size=nodes,
     num_of_nodes_to_remove=rand_nodes,num_of_edges_to_remove=rand_edges)
 
     # Initialize lists to store data for each cycle
@@ -78,20 +79,9 @@ def ACO_metaheuristic():
     ind = dist_and_route[0].index(optimal_dist)
     optimal_route = shortest_each_cycle[ind][1]
 
-    # print("Shortest tour consists of these cities:",optimal_route,
-    # "with a distance of",optimal_dist)
-    # print("Number of cycles ran =",current_cycle)
-
-    # Process data for number of ants
-    # print("Number of ants on each edges on the last cycle:",
-    # num_of_ants_per_edge_each_cycle[-1])
-    # print("The shortest tour made on the last cycle:",shortest_for_now[1])
-
-    # Process data for pheromone levels
-    # print("The pheromone levels on the last cycle:",pheromone_levels_each_cycle[-1])
-
 def ants_generation_and_activity_cycle(ant_graph):
     # Initialize list to store ant objects
+    average_dist_per_edge_data = []
     travelled_ants = []
     average_distance = []
     total_ant_distance = 0
@@ -120,13 +110,17 @@ def ants_generation_and_activity_cycle(ant_graph):
             ant_graph.average_dist_per_edge[edge] = num_of_passing_ants/cumulative_distance_on_edge
 
         # Process data for average distance traveled on each edge
+        avg_dist_dict = {i:j for i,j in ant_graph.average_dist_per_edge.items()}
+        average_dist_per_edge_data.append(avg_dist_dict)
         print("Total ants =",ant,"; Distance per Edge =",ant_graph.average_dist_per_edge)
 
         # Process data for average distance traveled on entire graph (all edges)
         average_distance.append(ant/total_ant_distance)
-        print("Total ants =",ant,"; Average Distance =",average_distance[-1])
+        # print("Total ants =",ant,"; Average Distance =",average_distance[-1])
 
     shortest = 100000000
+
+    process_avg_dist_per_edge(ant_graph,average_dist_per_edge_data)
 
     # Make ants trace back routes and lay pheromones
     for each_ant in travelled_ants:
@@ -136,6 +130,25 @@ def ants_generation_and_activity_cycle(ant_graph):
         each_ant.lay_pheromones()
 
     return result
+
+def process_avg_dist_per_edge(ant_graph,data):
+    edge_names = list(data[0].keys())
+    data_dict = {edge:[] for edge in edge_names}
+    num_of_ants_shot = list(range(1,len(data)+1))
+
+    for edge in edge_names:
+        for i in range(len(data)):
+            data_dict[edge].append(data[i][edge])
+
+        plt.plot(num_of_ants_shot,data_dict[edge],label='Edge'+str(edge))
+
+    plt.legend()
+    plt.ylabel('Pheromones Laid per Unit Distance')
+    plt.xlabel('Number of Ants Shot through the Graph')
+    filename = 'signal_'+str(len(num_of_ants_shot))+'ants_'+str(len(ant_graph.nodes()))+'nodes_'+str(len(edge_names))+'edges'
+    plt.savefig(filename,format='PNG')
+
+    plt.show()
 
 def main():
     ACO_metaheuristic()
