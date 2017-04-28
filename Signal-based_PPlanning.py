@@ -133,6 +133,9 @@ def process_avg_dist_per_edge(ant_graph,data):
     data_dict = {edge:[] for edge in edge_names}
     num_of_ants_shot = list(range(1,len(data)+1))
 
+    figure = plt.gcf()
+    figure.set_size_inches(14,10)
+
     for edge in edge_names:
         for i in range(len(data)):
             data_dict[edge].append(data[i][edge])
@@ -141,9 +144,9 @@ def process_avg_dist_per_edge(ant_graph,data):
 
     plt.legend(ncol=5)
     plt.ylabel('Pheromones Laid per Unit Distance')
-    plt.xlabel('Number of Ants Shot through the Graph')
-    filename = 'signal_'+str(len(num_of_ants_shot))+'ants_'+str(len(ant_graph.nodes()))+'nodes_'+str(len(edge_names))+'edges'
-    plt.savefig(filename,format='PNG')
+    plt.xlabel('Number of Ants Shot')
+    filename = 'signal_'+str(len(ant_graph.nodes()))+'nodes_'+str(len(edge_names))+'edges'
+    plt.savefig('Signal Based Data/'+filename,format='PNG',dpi=100)
 
     plt.show()
 
