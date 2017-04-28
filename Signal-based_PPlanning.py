@@ -36,15 +36,15 @@ import matplotlib.pyplot as plt
 
 Q = 10 # pheromone constant
 num_of_ants = 10000 # total number of ants
-nodes = 4 # size of graph (number of nodes)
+nodes = 10 # size of graph (number of nodes)
 euc_space = 10 # euclidean space in each dimension (max x,y coordinates)
 rand_nodes = 0 # number of nodes to remove
-rand_edges = 0 # number of edges to remove
+rand_edges = 4 # number of edges to remove
 max_cycles = 1 # total number of cycles
 
 def ACO_metaheuristic():
     # Initialize NetworkX Graph object
-    ant_graph = initialize_graph(yaml_file='5nodes5edges.yaml',space=euc_space,size=nodes,
+    ant_graph = initialize_graph(yaml_file=None,space=euc_space,size=nodes,
     num_of_nodes_to_remove=rand_nodes,num_of_edges_to_remove=rand_edges)
 
     # Initialize lists to store data for each cycle
@@ -82,28 +82,24 @@ def ACO_metaheuristic():
 def ants_generation_and_activity_cycle(ant_graph):
     # Initialize list to store ant objects
     average_dist_per_edge_data = []
-    travelled_ants = []
+    traveled_ants = []
     average_distance = []
     total_ant_distance = 0
+    # print(ant_graph.edges(data=True))
 
     # Shoot ants through graph one at a time
     for ant in range(1,num_of_ants+1):
-        travelled_ants.append(Ant(Node(1,ant_graph)))
-        travelled_ants[-1].cycle()
-        current_ant_distance = travelled_ants[-1].travelled
+        traveled_ants.append(Ant(Node(1,ant_graph)))
+        traveled_ants[-1].cycle()
+        current_ant_distance = traveled_ants[-1].traveled
         total_ant_distance += current_ant_distance
+        # print(current_ant_distance)
+        # print(traveled_ants[-1].traveled_edges,ant_graph.total_ant_distance_counter)
 
         for i in ant_graph.ant_counter_per_edge:
-            ant_graph.ant_counter_per_edge[i] += travelled_ants[-1].travelled_edges.count(i)
+            ant_graph.ant_counter_per_edge[i] += traveled_ants[-1].traveled_edges.count(i)
 
-        for j in range(len(travelled_ants[-1].memory)-1):
-            head_node = travelled_ants[-1].memory[j+1]
-            tail_node = travelled_ants[-1].memory[j]
-
-            # Declaring 'edge' as a key which is a tuple
-            edge = sorted([tail_node,head_node]) # the dictionary keys are tuples which values are in ascending order
-            edge = (edge[0],edge[1])
-
+        for edge in list(set(traveled_ants[-1].traveled_edges)):
             num_of_passing_ants = ant_graph.ant_counter_per_edge[edge]
             ant_graph.total_ant_distance_counter[edge] += current_ant_distance
             cumulative_distance_on_edge = ant_graph.total_ant_distance_counter[edge]
@@ -112,7 +108,8 @@ def ants_generation_and_activity_cycle(ant_graph):
         # Process data for average distance traveled on each edge
         avg_dist_dict = {i:j for i,j in ant_graph.average_dist_per_edge.items()}
         average_dist_per_edge_data.append(avg_dist_dict)
-        print("Total ants =",ant,"; Distance per Edge =",ant_graph.average_dist_per_edge)
+        # print(traveled_ants[-1].traveled_edges,ant_graph.total_ant_distance_counter)
+        # print("Total ants =",ant,"; Distance per Edge =",ant_graph.average_dist_per_edge)
 
         # Process data for average distance traveled on entire graph (all edges)
         average_distance.append(ant/total_ant_distance)
@@ -123,9 +120,9 @@ def ants_generation_and_activity_cycle(ant_graph):
     process_avg_dist_per_edge(ant_graph,average_dist_per_edge_data)
 
     # Make ants trace back routes and lay pheromones
-    for each_ant in travelled_ants:
-        if (shortest > each_ant.travelled):
-            shortest = each_ant.travelled
+    for each_ant in traveled_ants:
+        if (shortest > each_ant.traveled):
+            shortest = each_ant.traveled
             result = shortest,each_ant.memory
         each_ant.lay_pheromones()
 
@@ -142,7 +139,7 @@ def process_avg_dist_per_edge(ant_graph,data):
 
         plt.plot(num_of_ants_shot,data_dict[edge],label='Edge'+str(edge))
 
-    plt.legend()
+    plt.legend(ncol=5)
     plt.ylabel('Pheromones Laid per Unit Distance')
     plt.xlabel('Number of Ants Shot through the Graph')
     filename = 'signal_'+str(len(num_of_ants_shot))+'ants_'+str(len(ant_graph.nodes()))+'nodes_'+str(len(edge_names))+'edges'

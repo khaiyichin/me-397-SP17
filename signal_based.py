@@ -19,8 +19,8 @@ class Ant(object):
         self.current_state = starting_node_object.node_name()
         self.map = starting_node_object[1] # Node() class tuple, which the 2nd element is the networkx graph object
         self.first_state = starting_node_object.node_name()
-        self.travelled_edges = []
-        self.travelled = 0
+        self.traveled_edges = []
+        self.traveled = 0
         self.phero = phero
         self.routing_table = []
 
@@ -59,7 +59,7 @@ class Ant(object):
         # invoke choices which invokes routing table
         next_node = self.choices()
         self.memory.append(next_node)
-        self.travelled += self.map.edge[self.current_state][next_node]['dist']
+        self.traveled += self.map.edge[self.current_state][next_node]['dist']
         self.current_state = next_node
 
         self.routing_table = []
@@ -70,14 +70,14 @@ class Ant(object):
         while self.current_state != destination_node:
             self.move_to_next_state()
 
-        travelled_edges = [(self.memory[i],self.memory[i+1]) for i in range(len(self.memory)-1)] # compile a list of travelled edges
-        travelled_edges = [sorted(i) for i in travelled_edges] # arrange the representation of the travelled edges' tuples
-        travelled_edges = [(i,j) for i,j in travelled_edges] # put them into tuples in order to count them
+        traveled_edges = [(self.memory[i],self.memory[i+1]) for i in range(len(self.memory)-1)] # compile a list of traveled edges
+        traveled_edges = [sorted(i) for i in traveled_edges] # arrange the representation of the traveled edges' tuples
+        traveled_edges = [(i,j) for i,j in traveled_edges] # put them into tuples in order to count them
 
-        self.travelled_edges = travelled_edges
+        self.traveled_edges = traveled_edges
 
     def lay_pheromones(self):
-        self.phero_per_unit = self.phero/self.travelled
+        self.phero_per_unit = self.phero/self.traveled
         backwards_mem = list(reversed(self.memory))
 
         # Lay pheromone on the networkx graph object
@@ -171,6 +171,7 @@ def initialize_graph(name=None,yaml_file=None,space=0,size=0,
         graph = Ant_Graph(temp)
 
     graph.initialize()
+    plt.gcf().clear()
 
     return graph
 
