@@ -30,8 +30,8 @@ class Ant(object):
 
         avail_options = [i for i in self.map.neighbors(self.current_state)]
 
-        if len(avail_options) != 1 and len(self.memory) > 1: # preventing u-turns unless at dead end
-            avail_options = [i for i in avail_options if i != self.memory[-2]]
+        # if len(avail_options) != 1 and len(self.memory) > 1: # preventing u-turns unless at dead end
+        #     avail_options = [i for i in avail_options if i != self.memory[-2]]
 
         list_of_probs = []
         denom = 0

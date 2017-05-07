@@ -1,41 +1,17 @@
 '''
 Path Planning with Signal Based ACO
-
-TO-DOs:
-6. the main question: what kind of information to collect (and conditions to run in)
-    to relate ant number, graph size, convergence rate etc
-
-NEW TO-DOs
-1. write function to generate random graph
-    - assign random coordinates 2-D/3-D -- done
-    - include obstacle (node removal) function within, but optional to run -- done
-    - include edge removal
-2. write function to save into yaml format -- done
-    - allow initialization of fresh graph or construct from yaml file -- done
-3. consider setting constraints for start and end node
-    - maybe set them the furthest apart
-    - remove the direct edge between start and end node -- done
-    - prohibit removal of them -- done
-4. add distances and pheromones on edges -- done
-5. make sure ant movement is correct -- done
-    - start at the same node -- done
-6. record convergence of ants
-    - not interested in optimal solution
-
-UPDATES:
-    - yaml file name needs changing -- done
-    - removal of edges ==> look at subroutine for completeness of graph -- done
-    - continue separating application vs library code
-    - prohibit u-turn of ants -- done
 '''
 import networkx as nx
 import random
 import sys
 from signal_based import initialize_graph, Ant, Node
 import matplotlib.pyplot as plt
+import datetime
+import os
+import errno
 
 Q = 10 # pheromone constant
-num_of_ants = 10000 # total number of ants
+num_of_ants = 10 # total number of ants
 nodes = 10 # size of graph (number of nodes)
 euc_space = 10 # euclidean space in each dimension (max x,y coordinates)
 rand_nodes = 0 # number of nodes to remove
@@ -44,7 +20,7 @@ max_cycles = 1 # total number of cycles
 
 def ACO_metaheuristic():
     # Initialize NetworkX Graph object
-    ant_graph = initialize_graph(yaml_file=None,space=euc_space,size=nodes,
+    ant_graph = initialize_graph(yaml_file='5nodes9edges.yaml',space=euc_space,size=nodes,
     num_of_nodes_to_remove=rand_nodes,num_of_edges_to_remove=rand_edges)
 
     # Initialize lists to store data for each cycle
@@ -129,6 +105,11 @@ def ants_generation_and_activity_cycle(ant_graph):
     return result
 
 def process_avg_dist_per_edge(ant_graph,data):
+    folder_name = str(datetime.date.today())
+    make_sure_path_exists(folder_name)
+
+    time_string = str(datetime.datetime.now().strftime('%H%M%S'))
+
     edge_names = list(data[0].keys())
     data_dict = {edge:[] for edge in edge_names}
     num_of_ants_shot = list(range(1,len(data)+1))
@@ -143,12 +124,21 @@ def process_avg_dist_per_edge(ant_graph,data):
         plt.plot(num_of_ants_shot,data_dict[edge],label='Edge'+str(edge))
 
     plt.legend(ncol=5)
+    plt.grid()
     plt.ylabel('Pheromones Laid per Unit Distance')
     plt.xlabel('Number of Ants Shot')
+    plt.title('Ant Mass*Q across Links')
     filename = 'signal_'+str(len(ant_graph.nodes()))+'nodes_'+str(len(edge_names))+'edges'
-    plt.savefig('Signal Based Data/'+filename,format='PNG',dpi=100)
+    plt.savefig(folder_name+'/'+filename+time_string,format='PNG',dpi=100)
 
-    plt.show()
+    # plt.show()
+
+def make_sure_path_exists(path):
+    try:
+        os.makedirs(path)
+    except OSError as exception:
+        if exception.errno != errno.EEXIST:
+            raise
 
 def main():
     ACO_metaheuristic()
