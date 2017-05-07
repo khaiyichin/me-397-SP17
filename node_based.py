@@ -48,7 +48,8 @@ class Node(tuple):
         self.links_descend = [] # for current node n, links are of the form (b,n), b > n
         self.ant_mass = 0
         self.traveled_ant_mass = 0
-        self.avg_distance = 0
+        self.avg_distance_ascend = 0
+        self.avg_distance_descend = 0
         self.out_link_phero = 0
 
         connected_links = [(i,self.node_name) for i in self[1].neighbors(self.node_name)]
@@ -70,6 +71,7 @@ class Node(tuple):
 
     def add_ant_mass(self,ant_mass):
         self.ant_mass += ant_mass
+        self.traveled_ant_mass += ant_mass
 
     def remove_all_mass(self):
         self.ant_mass = 0
@@ -77,11 +79,11 @@ class Node(tuple):
     def fold_function(self):
         for i in self.links_descend:
             self.ant_mass += i.ant_mass_descend
-            self.avg_distance += i.ant_mass_descend*i.avg_distance_descend
+            self.avg_distance_descend += i.ant_mass_descend*i.avg_distance_descend
 
         for i in self.links_ascend:
             self.ant_mass += i.ant_mass_ascend
-            self.avg_distance += i.ant_mass_ascend*i.avg_distance_ascend
+            self.avg_distance_descend += i.ant_mass_ascend*i.avg_distance_ascend
 
         self.traveled_ant_mass += self.ant_mass
 
@@ -112,12 +114,12 @@ class Node(tuple):
 
         for i in self.links_descend:
             i.ant_mass_ascend = self.ant_mass*i.phero/self.out_link_phero
-            i.ant_mass_record_ascend = self.traveled_ant_mass
+            i.ant_mass_record_ascend += i.ant_mass_ascend
             i.avg_distance_ascend = self.avg_distance
 
         for i in self.links_ascend:
             i.ant_mass_descend = self.ant_mass*i.phero/self.out_link_phero
-            i.ant_mass_record_descend = self.traveled_ant_mass
+            i.ant_mass_record_descend += i.ant_mass_descend
             i.avg_distance_descend = self.avg_distance
 
         self.ant_mass = 0
@@ -187,18 +189,21 @@ class Ant_Graph(nx.Graph):
         ant_mass_dict_descend = {}
 
         for i in self.nodes_list:
+            print(i.node_name,i.avg_distance)
             i.split_fold_function()
             i.split_function()
+            # print(i.node_name,i.traveled_ant_mass,i.ant_mass)
 
         for i in self.links_list:
+            print(i.link_name,i.ant_mass_record_ascend)
             i.link_function()
 
         for i in self.links_list:
-            # print([i.link_name,(i.ant_mass_ascend,i.avg_distance_ascend),(i.ant_mass_descend,i.avg_distance_descend)])
             avg_dist_dict_ascend[i.link_name] = i.avg_distance_ascend
             avg_dist_dict_descend[i.link_name] = i.avg_distance_descend
             ant_mass_dict_ascend[i.link_name] = i.ant_mass_record_ascend
             ant_mass_dict_descend[i.link_name] = i.ant_mass_record_descend
+        print(ant_mass_dict_ascend)
 
         for i in self.nodes_list:
             i.fold_function()
