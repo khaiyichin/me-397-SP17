@@ -6,12 +6,13 @@ import random
 import sys
 from signal_based import initialize_graph, Ant, Node
 import matplotlib.pyplot as plt
+import numpy as np
 import datetime
 import os
 import errno
 
 Q = 10 # pheromone constant
-num_of_ants = 10 # total number of ants
+num_of_ants = 15000 # total number of ants
 nodes = 10 # size of graph (number of nodes)
 euc_space = 10 # euclidean space in each dimension (max x,y coordinates)
 rand_nodes = 0 # number of nodes to remove
@@ -20,7 +21,7 @@ max_cycles = 1 # total number of cycles
 
 def ACO_metaheuristic():
     # Initialize NetworkX Graph object
-    ant_graph = initialize_graph(yaml_file='5nodes9edges.yaml',space=euc_space,size=nodes,
+    ant_graph = initialize_graph(yaml_file='4nodes4edges.yaml',space=euc_space,size=nodes,
     num_of_nodes_to_remove=rand_nodes,num_of_edges_to_remove=rand_edges)
 
     # Initialize lists to store data for each cycle
@@ -69,8 +70,6 @@ def ants_generation_and_activity_cycle(ant_graph):
         traveled_ants[-1].cycle()
         current_ant_distance = traveled_ants[-1].traveled
         total_ant_distance += current_ant_distance
-        # print(current_ant_distance)
-        # print(traveled_ants[-1].traveled_edges,ant_graph.total_ant_distance_counter)
 
         for i in ant_graph.ant_counter_per_edge:
             ant_graph.ant_counter_per_edge[i] += traveled_ants[-1].traveled_edges.count(i)
@@ -91,6 +90,10 @@ def ants_generation_and_activity_cycle(ant_graph):
         average_distance.append(ant/total_ant_distance)
         # print("Total ants =",ant,"; Average Distance =",average_distance[-1])
 
+        print(traveled_ants[-1].traveled_edges,current_ant_distance)
+        print(ant_graph.ant_counter_per_edge,ant_graph.total_ant_distance_counter)
+        print(avg_dist_dict)
+        print()
     shortest = 100000000
 
     process_avg_dist_per_edge(ant_graph,average_dist_per_edge_data)
@@ -112,26 +115,63 @@ def process_avg_dist_per_edge(ant_graph,data):
 
     edge_names = list(data[0].keys())
     data_dict = {edge:[] for edge in edge_names}
+    diff_dict = {edge:[] for edge in edge_names}
     num_of_ants_shot = list(range(1,len(data)+1))
 
     figure = plt.gcf()
     figure.set_size_inches(14,10)
 
+    sum_of_data = np.zeros(len(data))
+    sum_of_diff = np.zeros(len(data)-1)
+
     for edge in edge_names:
         for i in range(len(data)):
             data_dict[edge].append(data[i][edge])
 
+        sum_of_data += np.array(data_dict[edge])
         plt.plot(num_of_ants_shot,data_dict[edge],label='Edge'+str(edge))
 
     plt.legend(ncol=5)
     plt.grid()
-    plt.ylabel('Pheromones Laid per Unit Distance')
+    plt.ylabel('Ant Mass per Unit Distance')
     plt.xlabel('Number of Ants Shot')
-    plt.title('Ant Mass*Q across Links')
-    filename = 'signal_'+str(len(ant_graph.nodes()))+'nodes_'+str(len(edge_names))+'edges'
+    plt.title('Ant Mass per Unit Distance across Each Link')
+    filename = 'signal_M_'+str(len(ant_graph.nodes()))+'nodes_'+str(len(edge_names))+'edges'
     plt.savefig(folder_name+'/'+filename+time_string,format='PNG',dpi=100)
 
-    # plt.show()
+    plt.gcf().clear()
+
+    # Plot sum of mass per unit distance across all links
+    plt.plot(num_of_ants_shot,sum_of_data)
+
+    plt.grid()
+    plt.ylabel('Ant Mass per Unit Distance')
+    plt.xlabel('Number of Ants Shot')
+    plt.title('Ant Mass per Unit Distance across Links')
+    filename = 'signal_sumM_'+str(len(ant_graph.nodes()))+'nodes_'+str(len(edge_names))+'edges'
+    plt.savefig(folder_name+'/'+filename+time_string,format='PNG',dpi=100)
+
+    plt.gcf().clear()
+
+    sum_of_diff = np.zeros(len(data))
+    for edge in edge_names:
+        diff_dict[edge].append(data[0][edge])
+
+        for i in range(len(data)-1):
+            diff_dict[edge].append(data[i+1][edge]-data[i][edge])
+
+        sum_of_diff += np.array(diff_dict[edge])
+
+    plt.plot(num_of_ants_shot,sum_of_diff)
+
+    plt.grid()
+    plt.ylabel('Change of Ant Mass per Unit Distance')
+    plt.xlabel('Number of Ants Shot')
+    plt.title('Change of Ant Mass per Unit Distance across All Links')
+    filename = 'signal_diffM_'+str(len(ant_graph.nodes()))+'nodes_'+str(len(edge_names))+'edges'
+    plt.savefig(folder_name+'/'+filename+time_string,format='PNG',dpi=100)
+
+    plt.gcf().clear()
 
 def make_sure_path_exists(path):
     try:

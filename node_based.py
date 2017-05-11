@@ -14,18 +14,6 @@ Required classes:
 3. Link() object -- w in Jack's paper
     - contains n, d_l, p, d_f (mostly counters or traces of travels)
     - link function
-
-
-TO-DOs:
-1. Complete Link() class -- done
-2. Complete Ant_Graph() class -- mostly done, but the fold function seems to
-    give average distances increasing forever (sometimes the distance decreases)
-    * also look at end nodes average distance! -- looks okay
-    - node_execution method -- done
-    - might have to have a reset method for the nodes to reinitialize ant mass -- split_function
-3. Add end node function (draining/retaining ant mass) -- done under Ant_Graph() method
-4. Ant mass is wrong!! ==> average_distance is also wrong
-    - average distance should settle
 '''
 
 import networkx as nx
@@ -47,9 +35,7 @@ class Node(tuple):
         self.links_ascend = [] # for current node n, links are of the form (a,n), a < n
         self.links_descend = [] # for current node n, links are of the form (b,n), b > n
         self.ant_mass = 0
-        self.traveled_ant_mass = 0
-        self.avg_distance_ascend = 0
-        self.avg_distance_descend = 0
+        self.avg_distance = 0
         self.out_link_phero = 0
 
         connected_links = [(i,self.node_name) for i in self[1].neighbors(self.node_name)]
@@ -71,27 +57,27 @@ class Node(tuple):
 
     def add_ant_mass(self,ant_mass):
         self.ant_mass += ant_mass
-        self.traveled_ant_mass += ant_mass
 
     def remove_all_mass(self):
         self.ant_mass = 0
 
     def fold_function(self):
+        if self.node_name == 1: # Start node
+            self.add_ant_mass(1)
+
         for i in self.links_descend:
             self.ant_mass += i.ant_mass_descend
-            self.avg_distance_descend += i.ant_mass_descend*i.avg_distance_descend
+            self.avg_distance += i.ant_mass_descend*i.avg_distance_descend
 
         for i in self.links_ascend:
             self.ant_mass += i.ant_mass_ascend
-            self.avg_distance_descend += i.ant_mass_ascend*i.avg_distance_ascend
-
-        self.traveled_ant_mass += self.ant_mass
+            self.avg_distance += i.ant_mass_ascend*i.avg_distance_ascend
 
         if self.ant_mass == 0:
             self.avg_distance = 0
 
         else:
-            self.avg_distance = self.avg_distance/self.traveled_ant_mass
+            self.avg_distance = self.avg_distance/self.ant_mass
 
         if self.node_name == len(self.graph.nodes_list):
             self.remove_all_mass()
@@ -114,13 +100,12 @@ class Node(tuple):
 
         for i in self.links_descend:
             i.ant_mass_ascend = self.ant_mass*i.phero/self.out_link_phero
-            i.ant_mass_record_ascend += i.ant_mass_ascend
             i.avg_distance_ascend = self.avg_distance
 
         for i in self.links_ascend:
             i.ant_mass_descend = self.ant_mass*i.phero/self.out_link_phero
-            i.ant_mass_record_descend += i.ant_mass_descend
             i.avg_distance_descend = self.avg_distance
+            # print(self.node_name,self.avg_distance,i.link_name,i.avg_distance_descend)
 
         self.ant_mass = 0
         self.avg_distance = 0
@@ -134,10 +119,8 @@ class Link(tuple):
         # self.graph = self[1]
         self.link_distance = self[1].edge[self.link_name[0]][self.link_name[1]]['dist'] # d_l
         self.phero = self[1].edge[self.link_name[0]][self.link_name[1]]['phero'] # p
-        self.ant_mass_ascend = 0 # physical ant mass/volume in the graph
-        self.ant_mass_descend = 0 # physical ant mass/volume in the graph
-        self.ant_mass_record_ascend = 0 # n
-        self.ant_mass_record_descend = 0 # n
+        self.ant_mass_ascend = 0 # n in the graph
+        self.ant_mass_descend = 0 # n in the graph
         self.avg_distance_ascend = 0 # d_f from low to high (eg. 1-2)
         self.avg_distance_descend = 0 # d_f from high to low (eg. 2-1)
 
@@ -178,9 +161,8 @@ class Ant_Graph(nx.Graph):
         for i in self.nodes_list:
             i.initialize()
 
-        self.nodes_list[0].add_ant_mass(100)
-
         self.leftover = 1 - evaporation_rate
+        self.nodes_list[0].add_ant_mass(1)
 
     def node_execution(self):
         avg_dist_dict_ascend = {}
@@ -189,21 +171,17 @@ class Ant_Graph(nx.Graph):
         ant_mass_dict_descend = {}
 
         for i in self.nodes_list:
-            print(i.node_name,i.avg_distance)
             i.split_fold_function()
             i.split_function()
-            # print(i.node_name,i.traveled_ant_mass,i.ant_mass)
 
         for i in self.links_list:
-            print(i.link_name,i.ant_mass_record_ascend)
             i.link_function()
 
         for i in self.links_list:
             avg_dist_dict_ascend[i.link_name] = i.avg_distance_ascend
             avg_dist_dict_descend[i.link_name] = i.avg_distance_descend
-            ant_mass_dict_ascend[i.link_name] = i.ant_mass_record_ascend
-            ant_mass_dict_descend[i.link_name] = i.ant_mass_record_descend
-        print(ant_mass_dict_ascend)
+            ant_mass_dict_ascend[i.link_name] = i.ant_mass_ascend
+            ant_mass_dict_descend[i.link_name] = i.ant_mass_descend
 
         for i in self.nodes_list:
             i.fold_function()
